@@ -39,6 +39,7 @@ let pcPublish = null; // PeerConnection for publishing (sending)
 let pcSubscribe = null; // PeerConnection for subscribing (receiving)
 let sessionIdPublish = null;
 let sessionIdSubscribe = null;
+let timerInterval = null; // Pemasa mesyuarat
 
 // Track mappings
 let myPublishedTracks = []; // [{ trackId, label }]
@@ -347,6 +348,8 @@ async function connectCall() {
         chatInput.disabled = false;
         btnSendChat.disabled = false;
         
+        startMeetingTimer();
+        
     } catch (error) {
         log(`Gagal memulakan panggilan: ${error.message}`, 'error');
         disconnectCall();
@@ -511,6 +514,7 @@ function disconnectCall() {
     btnSendChat.disabled = true;
     
     log('Semua sesi panggilan ditamatkan.', 'info');
+    stopMeetingTimer();
 }
 
 // 8. Hantar Chat (Melalui WebSocket Bilik)
@@ -568,6 +572,8 @@ function startMockCall() {
         
         appendMessage(`Rakan (${randomPeer})`, randomText, 'remote');
     }, 8000);
+    
+    startMeetingTimer();
 }
 
 function stopMockCall() {
@@ -590,6 +596,7 @@ function stopMockCall() {
     btnSendChat.disabled = true;
     
     log('Mod simulasi panggilan dihentikan.', 'info');
+    stopMeetingTimer();
 }
 
 // 10. Tutup/Buka Kamera
@@ -739,3 +746,38 @@ inputRoomId.addEventListener('keyup', (e) => {
         joinRoom();
     }
 });
+
+// 13. Pemasa Tempoh Mesyuarat (Meeting Timer)
+function startMeetingTimer() {
+    const timerBadge = document.getElementById('meeting-timer');
+    if (!timerBadge) return;
+    
+    timerBadge.style.display = 'flex';
+    const startTime = Date.now();
+    
+    if (timerInterval) clearInterval(timerInterval);
+    
+    timerInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const hours = Math.floor(elapsed / 3600000).toString().padStart(2, '0');
+        const minutes = Math.floor((elapsed % 3600000) / 60000).toString().padStart(2, '0');
+        const seconds = Math.floor((elapsed % 60000) / 1000).toString().padStart(2, '0');
+        
+        timerBadge.innerHTML = `<i class="fa-solid fa-clock"></i> ${hours}:${minutes}:${seconds}`;
+    }, 1000);
+    
+    log('Pemasa tempoh mesyuarat dimulakan.', 'system');
+}
+
+function stopMeetingTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    const timerBadge = document.getElementById('meeting-timer');
+    if (timerBadge) {
+        timerBadge.style.display = 'none';
+        timerBadge.innerHTML = `<i class="fa-solid fa-clock"></i> 00:00:00`;
+    }
+    log('Pemasa tempoh mesyuarat dihentikan.', 'system');
+}
