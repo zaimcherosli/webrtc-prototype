@@ -257,6 +257,15 @@ body {
     max-width: 100%;
 }
 
+/* Center single participant feed (camera) when alone in room */
+.video-wrapper:only-child {
+    grid-column: 1 / -1;
+    justify-self: center;
+    align-self: center;
+    width: 100%;
+    max-width: 720px; /* Golden size for single view */
+}
+
 .video-wrapper:hover {
     border-color: rgba(37, 99, 235, 0.4);
     transform: translateY(-2px);
