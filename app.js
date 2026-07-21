@@ -708,7 +708,8 @@ async function shareScreen() {
         isSharingScreen = true;
         
         btnShareScreen.classList.add('active');
-        btnShareScreen.innerHTML = '<i class="fa-solid fa-desktop"></i> <span>Stop Share</span>';
+        btnShareScreen.innerHTML = '<i class="fa-solid fa-desktop"></i>';
+        btnShareScreen.title = 'Hentikan Perkongsian Skrin';
         screenIndicator.classList.remove('disabled');
         
         const screenTrack = screenStream.getVideoTracks()[0];
@@ -751,7 +752,8 @@ function stopScreenShare() {
     
     isSharingScreen = false;
     btnShareScreen.classList.remove('active');
-    btnShareScreen.innerHTML = '<i class="fa-solid fa-desktop"></i> <span>Share Screen</span>';
+    btnShareScreen.innerHTML = '<i class="fa-solid fa-desktop"></i>';
+    btnShareScreen.title = 'Kongsi Skrin (Share Screen)';
     screenIndicator.classList.add('disabled');
     
     // Matikan mod fokus full screen
