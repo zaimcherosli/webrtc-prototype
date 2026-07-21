@@ -8,6 +8,9 @@ const btnToggleAudio = document.getElementById('btn-toggle-audio');
 const btnShareScreen = document.getElementById('btn-share-screen');
 const btnToggleChat = document.getElementById('btn-toggle-chat');
 const btnConnect = document.getElementById('btn-connect');
+const btnHideControls = document.getElementById('btn-hide-controls');
+const btnShowControls = document.getElementById('btn-show-controls');
+const controlsPanel = document.querySelector('.controls-panel');
 
 const inputDisplayName = document.getElementById('input-display-name');
 const inputRoomId = document.getElementById('input-room-id');
@@ -814,6 +817,115 @@ inputRoomId.addEventListener('keyup', (e) => {
         joinRoom();
     }
 });
+
+// Sembunyikan & Tunjukkan Panel Kawalan (Floating UI)
+btnHideControls.addEventListener('click', () => {
+    controlsPanel.style.display = 'none';
+    btnShowControls.style.display = 'flex';
+    log('Panel kawalan disembunyikan. Klik ikon mata di bawah kanan untuk tunjukkan semula.', 'info');
+});
+
+btnShowControls.addEventListener('click', () => {
+    controlsPanel.style.display = 'flex';
+    btnShowControls.style.display = 'none';
+});
+
+// Pintasan Keyboard 'H' untuk sorok/tunjuk panel kawalan
+document.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'h') {
+        // Jangan cetus jika user sedang menaip input teks
+        if (document.activeElement === chatInput || 
+            document.activeElement === inputDisplayName || 
+            document.activeElement === inputRoomId) {
+            return;
+        }
+        
+        if (controlsPanel.style.display === 'none') {
+            controlsPanel.style.display = 'flex';
+            btnShowControls.style.display = 'none';
+        } else {
+            controlsPanel.style.display = 'none';
+            btnShowControls.style.display = 'flex';
+            log('Panel kawalan disembunyikan (Pintasan H).', 'info');
+        }
+    }
+});
+
+// Fungsi membolehkan panel kawalan diheret (Draggable controls panel)
+function makeElementDraggable(elmnt) {
+    if (!elmnt) return;
+    
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    
+    // Heret dari mana-mana ruang kosong dalam panel (tapi bukan dari butang)
+    elmnt.onmousedown = dragMouseDown;
+    elmnt.ontouchstart = dragMouseDown; // Kebersihan di peranti mudah alih
+
+    function dragMouseDown(e) {
+        e = e || window.event;
+        
+        // Jika klik pada butang, abaikan dragging (supaya klik click butang berfungsi)
+        if (e.target.closest('button')) return;
+        
+        e.preventDefault();
+        
+        // Ambil kedudukan awal cursor mouse/sentuhan
+        pos3 = e.clientX || (e.touches && e.touches[0].clientX);
+        pos4 = e.clientY || (e.touches && e.touches[0].clientY);
+        
+        document.onmouseup = closeDragElement;
+        document.ontouchend = closeDragElement;
+        
+        document.onmousemove = elementDrag;
+        document.ontouchmove = elementDrag;
+    }
+
+    function elementDrag(e) {
+        e = e || window.event;
+        e.preventDefault();
+        
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        
+        // Kira perbezaan kedudukan cursor
+        pos1 = pos3 - clientX;
+        pos2 = pos4 - clientY;
+        pos3 = clientX;
+        pos4 = clientY;
+        
+        // Hadkan panel di dalam viewport (Responsive bounding)
+        let newTop = elmnt.offsetTop - pos2;
+        let newLeft = elmnt.offsetLeft - pos1;
+        
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        const elementHeight = elmnt.offsetHeight;
+        const elementWidth = elmnt.offsetWidth;
+        
+        // Bounding limits
+        if (newTop < 10) newTop = 10;
+        if (newTop > viewportHeight - elementHeight - 10) newTop = viewportHeight - elementHeight - 10;
+        if (newLeft < 10) newLeft = 10;
+        if (newLeft > viewportWidth - elementWidth - 10) newLeft = viewportWidth - elementWidth - 10;
+        
+        // Tetapkan kedudukan baru
+        elmnt.style.top = newTop + "px";
+        elmnt.style.left = newLeft + "px";
+        elmnt.style.bottom = 'auto';
+        elmnt.style.right = 'auto';
+        elmnt.style.transform = 'none'; // Padam translate supaya kedudukan mutlak top/left berfungsi dengan betul
+    }
+
+    function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+        document.ontouchend = null;
+        document.ontouchmove = null;
+    }
+}
+
+// Aktifkan fungsi drag panel kawalan
+makeElementDraggable(controlsPanel);
 
 // 13. Pemasa Tempoh Mesyuarat (Meeting Timer)
 function startMeetingTimer() {

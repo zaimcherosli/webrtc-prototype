@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css?v=11">
+    <link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
     <div class="app-container">
@@ -108,7 +108,14 @@
                 <button id="btn-connect" class="btn btn-success" disabled title="Mula Bersiaran (Publish)">
                     <i class="fa-solid fa-tower-broadcast"></i>
                 </button>
+                <button id="btn-hide-controls" class="btn btn-secondary" title="Sembunyikan Panel Kawalan (H)">
+                    <i class="fa-solid fa-eye-slash"></i>
+                </button>
             </div>
+            
+            <button id="btn-show-controls" class="btn btn-primary show-controls-btn" style="display: none;" title="Tunjukkan Panel Kawalan">
+                <i class="fa-solid fa-eye"></i>
+            </button>
         </main>
 
         <!-- Right Sidebar: Chat -->
@@ -132,6 +139,6 @@
         </section>
     </div>
 
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=12"></script>
 </body>
 </html>
