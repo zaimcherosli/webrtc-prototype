@@ -539,6 +539,22 @@ function sendChatMessage() {
     chatInput.value = '';
 }
 
+function appendMessage(sender, text, type = 'local') {
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble ${type}`;
+    
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    bubble.innerHTML = `
+        <div class="chat-bubble-sender" style="font-size: 0.725rem; opacity: 0.8; font-weight: 600; margin-bottom: 2px;">${sender}</div>
+        <div class="chat-bubble-text">${text}</div>
+        <div class="chat-bubble-time" style="font-size: 0.65rem; opacity: 0.5; text-align: right; margin-top: 4px;">${time}</div>
+    `;
+    
+    chatMessages.appendChild(bubble);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
 // 9. Mod Simulasi Panggilan (Fallback Mock Mode)
 // Ini akan dijalankan sekiranya pengguna tiada Cloudflare Calls App ID/Token
 // Ia membolehkan pengguna menguji reka bentuk UI panggilan berkumpulan & chat secara simulasi tempatan
