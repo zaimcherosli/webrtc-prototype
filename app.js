@@ -262,7 +262,8 @@ async function handleSignalingMessage(data) {
 
         case 'chat':
             const isChatClosed = document.querySelector('.app-container').classList.contains('chat-closed');
-            if (isChatClosed) {
+            // Hanya tunjukkan popup sembang jika chat ditutup DAN pengguna TIDAK sedang berkongsi skrin (elak gangguan pembentang)
+            if (isChatClosed && !isSharingScreen) {
                 showChatToast(data.sender, data.text);
             }
             appendMessage(data.sender === myPeerId ? 'Anda' : `Rakan (${data.sender})`, data.text, data.sender === myPeerId ? 'local' : 'remote');
@@ -696,7 +697,8 @@ function startMockCall() {
         const randomText = mockMessages[Math.floor(Math.random() * mockMessages.length)];
         
         const isChatClosed = document.querySelector('.app-container').classList.contains('chat-closed');
-        if (isChatClosed) {
+        // Hanya tunjukkan popup sembang jika chat ditutup DAN pengguna TIDAK sedang berkongsi skrin (elak gangguan pembentang)
+        if (isChatClosed && !isSharingScreen) {
             showChatToast(`Rakan (${randomPeer})`, randomText);
         }
         appendMessage(`Rakan (${randomPeer})`, randomText, 'remote');
