@@ -67,6 +67,7 @@ body {
 
 /* Sidebar Styling */
 .sidebar {
+    grid-column: 1; /* Explicit column anchor for toggle state stability */
     background-color: rgba(15, 23, 42, 0.6);
     border-right: 1px solid var(--border-color);
     padding: 1.5rem;
@@ -170,6 +171,7 @@ body {
 
 /* Main Content Area */
 .main-content {
+    grid-column: 2; /* Explicit column anchor for toggle state stability */
     display: flex;
     flex-direction: column;
     padding: 1.5rem;
@@ -426,6 +428,7 @@ video {
 
 /* Chat Section */
 .chat-section {
+    grid-column: 3; /* Explicit column anchor for toggle state stability */
     background-color: rgba(15, 23, 42, 0.6);
     border-left: 1px solid var(--border-color);
     display: flex;
