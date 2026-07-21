@@ -543,11 +543,14 @@ function sendChatMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
     
-    // Untuk SFU 15 orang, chat dihantar terus melalui WebSocket bilik (Durable Object) untuk kecekapan penyiaran
+    // Hantar ke WebSocket Bilik (Durable Object) untuk disebarkan kepada rakan lain
     sendSignalingMessage({
         type: 'chat',
         text: text
     });
+    
+    // Papar mesej sendiri di skrin secara langsung (local bubble)
+    appendMessage('Anda', text, 'local');
     
     chatInput.value = '';
 }
