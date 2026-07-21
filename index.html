@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
     <div class="app-container">
@@ -23,21 +23,21 @@
             
             <!-- Room Setup Card -->
             <div class="card room-card">
-                <h3><i class="fa-solid fa-door-open"></i> Tetapan Bilik</h3>
+                <h3><i class="fa-solid fa-door-open"></i> Room Settings</h3>
                 <div class="room-input-fields">
                     <div class="input-field-wrapper">
-                        <label for="input-display-name">Nama Anda</label>
-                        <input type="text" id="input-display-name" placeholder="Nama Anda (cth: Zaim)">
+                        <label for="input-display-name">Your Name</label>
+                        <input type="text" id="input-display-name" placeholder="Your Name (e.g. Zaim)">
                     </div>
                     <div class="input-field-wrapper">
-                        <label for="input-room-id">ID Bilik</label>
-                        <input type="text" id="input-room-id" placeholder="Contoh: bilik-sfu">
+                        <label for="input-room-id">Room ID</label>
+                        <input type="text" id="input-room-id" placeholder="e.g. bilik-sfu">
                     </div>
                 </div>
                 <button id="btn-join-room" class="btn btn-primary" disabled>
-                    <span>Sertai Bilik</span>
+                    <span>Join Room</span>
                 </button>
-                <div class="peer-id-info" id="peer-id-display">ID Anda: Menjana...</div>
+                <div class="peer-id-info" id="peer-id-display">Your ID: Generating...</div>
             </div>
 
             <div class="card info-card">
@@ -132,6 +132,6 @@
         </section>
     </div>
 
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=8"></script>
 </body>
 </html>

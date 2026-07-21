@@ -49,7 +49,7 @@ let isSharingScreen = false;
 let isMockMode = false; // Set to true if Cloudflare Calls credentials are missing
 
 // Display Generated Peer ID
-peerIdDisplay.textContent = `ID Anda: ${myPeerId}`;
+peerIdDisplay.textContent = `Your ID: ${myPeerId}`;
 
 // Custom Logger Function
 function log(message, type = 'system') {
@@ -115,7 +115,13 @@ function joinRoom() {
     const displayName = inputDisplayName.value.trim();
     if (displayName) {
         myPeerId = displayName;
-        peerIdDisplay.textContent = `Nama Anda: ${myPeerId}`;
+        peerIdDisplay.textContent = `Your Name: ${myPeerId}`;
+    }
+    
+    // Kemas kini lencana nama pada video local
+    const localLabelBadge = document.querySelector('#local-video-wrapper .label-badge');
+    if (localLabelBadge) {
+        localLabelBadge.innerHTML = `<i class="fa-solid fa-user"></i> ${myPeerId} (Anda)`;
     }
 
     const roomId = inputRoomId.value.trim();
@@ -184,6 +190,13 @@ function resetRoomUI() {
     inputRoomId.disabled = false;
     btnJoinRoom.disabled = false;
     btnConnect.disabled = true;
+    
+    // Kembalikan lencana nama video local kepada asal
+    const localLabelBadge = document.querySelector('#local-video-wrapper .label-badge');
+    if (localLabelBadge) {
+        localLabelBadge.innerHTML = `<i class="fa-solid fa-user"></i> Anda (Local)`;
+    }
+    
     disconnectCall();
 }
 
