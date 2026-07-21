@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity WebRTC Call</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar: Info & Logs -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-circle-nodes brand-icon"></i>
+                <h2>WebRTC Call</h2>
+            </div>
+            
+            <!-- Room Setup Card -->
+            <div class="card room-card">
+                <h3><i class="fa-solid fa-door-open"></i> Tetapan Bilik</h3>
+                <div class="room-input-group">
+                    <input type="text" id="input-room-id" placeholder="Contoh: bilik-123">
+                    <button id="btn-join-room" class="btn btn-primary" disabled>
+                        <span>Join</span>
+                    </button>
+                </div>
+                <div class="peer-id-info" id="peer-id-display">ID Anda: Menjana...</div>
+            </div>
+
+            <div class="card info-card">
+                <h3><i class="fa-solid fa-circle-info"></i> WebSocket Signaling</h3>
+                <p>Aplikasi ini bersambung ke **Cloudflare Workers WebSocket Server** untuk membolehkan panggilan video, audio, screen share, dan chat nyata antara peranti/tab berbeza.</p>
+            </div>
+
+            <div class="card status-card">
+                <h3><i class="fa-solid fa-terminal"></i> Log Konsol WebRTC</h3>
+                <div id="logs" class="logs-container">
+                    <div class="log-entry system">Sistem sedia. Sila klik "Start Media" dahulu.</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="main-header">
+                <h1>Ruang Panggilan Video</h1>
+                <div class="header-badges">
+                    <span class="status-badge disconnected" id="ws-status">
+                        <i class="fa-solid fa-circle-nodes"></i> WS: Putus
+                    </span>
+                    <span class="status-badge disconnected" id="connection-status">
+                        <i class="fa-solid fa-circle-dot"></i> Panggilan: Tiada
+                    </span>
+                </div>
+            </header>
+
+            <!-- Video Grid -->
+            <div class="video-grid">
+                <!-- Local Video -->
+                <div class="video-wrapper">
+                    <video id="local-video" autoplay playsinline muted></video>
+                    <div class="video-label">
+                        <span class="label-badge"><i class="fa-solid fa-user"></i> Anda (Local)</span>
+                    </div>
+                    <div class="stream-indicators">
+                        <span id="mic-indicator" class="indicator disabled"><i class="fa-solid fa-microphone-slash"></i></span>
+                        <span id="video-indicator" class="indicator disabled"><i class="fa-solid fa-video-slash"></i></span>
+                        <span id="screen-indicator" class="indicator disabled"><i class="fa-solid fa-desktop"></i></span>
+                    </div>
+                </div>
+
+                <!-- Remote Video -->
+                <div class="video-wrapper">
+                    <video id="remote-video" autoplay playsinline></video>
+                    <div class="video-label">
+                        <span class="label-badge"><i class="fa-solid fa-user-friends"></i> Rakan (Remote)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls Panel -->
+            <div class="controls-panel">
+                <button id="btn-start-media" class="btn btn-primary" title="Aktifkan Kamera & Mic">
+                    <i class="fa-solid fa-camera"></i> <span>Start Media</span>
+                </button>
+                <button id="btn-toggle-video" class="btn btn-secondary" disabled title="Tutup/Buka Video">
+                    <i class="fa-solid fa-video"></i>
+                </button>
+                <button id="btn-toggle-audio" class="btn btn-secondary" disabled title="Mute/Unmute Audio">
+                    <i class="fa-solid fa-microphone"></i>
+                </button>
+                <button id="btn-share-screen" class="btn btn-secondary" disabled title="Kongsi Skrin">
+                    <i class="fa-solid fa-desktop"></i> <span>Share Screen</span>
+                </button>
+                <div class="divider"></div>
+                <button id="btn-connect" class="btn btn-success" disabled title="Hubungkan Panggilan">
+                    <i class="fa-solid fa-phone"></i> <span>Call Peer</span>
+                </button>
+                <button id="btn-disconnect" class="btn btn-danger" disabled title="Tamatkan Panggilan">
+                    <i class="fa-solid fa-phone-slash"></i> <span>Tamat</span>
+                </button>
+            </div>
+        </main>
+
+        <!-- Right Sidebar: Chat -->
+        <section class="chat-section">
+            <div class="chat-header">
+                <h3><i class="fa-solid fa-comments"></i> Sembang WebRTC (DataChannel)</h3>
+            </div>
+            
+            <div id="chat-messages" class="chat-messages">
+                <div class="chat-system-message">
+                    Sertai bilik dan sambungkan panggilan untuk mengaktifkan chat.
+                </div>
+            </div>
+
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Tulis mesej di sini..." disabled>
+                <button id="btn-send-chat" class="btn btn-primary btn-icon" disabled>
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

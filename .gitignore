@@ -1,0 +1,14 @@
+# Dependency directories
+node_modules/
+
+# Cloudflare Wrangler files
+.wrangler/
+.dev.vars
+
+# Log files
+*.log
+
+# Editor directories
+.idea/
+.vscode/
+.DS_Store
