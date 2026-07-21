@@ -162,6 +162,7 @@ body {
     gap: 1.5rem;
     height: 100vh;
     overflow: hidden;
+    position: relative; /* Anchor for floating controls panel */
 }
 
 .main-header {
@@ -219,6 +220,7 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.25rem;
     align-content: center;
+    padding-bottom: 80px; /* Space for the floating controls bar */
 }
 
 .video-wrapper {
@@ -299,8 +301,13 @@ video {
     border-color: rgba(239, 68, 68, 0.3);
 }
 
-/* Controls Panel */
+/* Controls Panel (Floating Mode) */
 .controls-panel {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99; /* Always float above video feeds */
     background-color: rgba(15, 23, 42, 0.85);
     border: 1px solid var(--border-color);
     border-radius: 9999px; /* Pill shape */
@@ -310,8 +317,7 @@ video {
     justify-content: center;
     gap: 1rem;
     backdrop-filter: blur(12px);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-    align-self: center; /* Center horizontally inside flex parent */
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
     width: fit-content;
 }
 
