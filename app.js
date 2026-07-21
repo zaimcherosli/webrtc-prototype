@@ -9,6 +9,7 @@ const btnShareScreen = document.getElementById('btn-share-screen');
 const btnConnect = document.getElementById('btn-connect');
 const btnDisconnect = document.getElementById('btn-disconnect');
 
+const inputDisplayName = document.getElementById('input-display-name');
 const inputRoomId = document.getElementById('input-room-id');
 const btnJoinRoom = document.getElementById('btn-join-room');
 const peerIdDisplay = document.getElementById('peer-id-display');
@@ -110,6 +111,12 @@ async function startMedia() {
 
 // 2. Sertai Bilik Isyarat (WebSocket Connection)
 function joinRoom() {
+    const displayName = inputDisplayName.value.trim();
+    if (displayName) {
+        myPeerId = displayName;
+        peerIdDisplay.textContent = `Nama Anda: ${myPeerId}`;
+    }
+
     const roomId = inputRoomId.value.trim();
     if (!roomId) {
         alert('Sila masukkan ID Bilik terlebih dahulu.');
@@ -130,13 +137,29 @@ function joinRoom() {
             wsStatus.className = 'status-badge connected';
             wsStatus.innerHTML = '<i class="fa-solid fa-circle-nodes"></i> WS: Aktif';
             
+            inputDisplayName.disabled = true;
             inputRoomId.disabled = true;
             btnJoinRoom.disabled = true;
+            
+            log('Menghantar isyarat join ke server...', 'system');
+            try {
+                socket.send(JSON.stringify({
+                    type: 'join',
+                    peerId: myPeerId
+                }));
+            } catch (err) {
+                log(`Gagal hantar isyarat join: ${err.message}`, 'error');
+            }
         };
         
         socket.onmessage = async (event) => {
-            const data = JSON.parse(event.data);
-            handleSignalingMessage(data);
+            try {
+                const data = JSON.parse(event.data);
+                log(`WS Msg: ${data.type}`, 'system');
+                await handleSignalingMessage(data);
+            } catch (err) {
+                log(`Ralat WS Message: ${err.message}`, 'error');
+            }
         };
         
         socket.onclose = () => {
@@ -156,6 +179,7 @@ function joinRoom() {
 }
 
 function resetRoomUI() {
+    inputDisplayName.disabled = false;
     inputRoomId.disabled = false;
     btnJoinRoom.disabled = false;
     btnConnect.disabled = true;
@@ -635,6 +659,13 @@ async function shareScreen() {
         const screenTrack = screenStream.getVideoTracks()[0];
         localVideo.srcObject = screenStream;
         
+        // Aktifkan mod fokus full screen untuk screen share (Sembunyikan view rakan lain)
+        const localVideoWrapper = document.getElementById('local-video-wrapper');
+        if (localVideoWrapper) {
+            localVideoWrapper.classList.add('sharing-screen');
+        }
+        videoContainer.classList.add('screen-sharing-active');
+        
         // Tukar track video secara dynamically di PeerConnection jika bersiaran (Hot-Swap)
         if (pcPublish) {
             const videoSender = pcPublish.getSenders().find(s => s.track && s.track.kind === 'video');
@@ -667,6 +698,13 @@ function stopScreenShare() {
     btnShareScreen.classList.remove('active');
     btnShareScreen.innerHTML = '<i class="fa-solid fa-desktop"></i> <span>Share Screen</span>';
     screenIndicator.classList.add('disabled');
+    
+    // Matikan mod fokus full screen
+    const localVideoWrapper = document.getElementById('local-video-wrapper');
+    if (localVideoWrapper) {
+        localVideoWrapper.classList.remove('sharing-screen');
+    }
+    videoContainer.classList.remove('screen-sharing-active');
     
     localVideo.srcObject = localStream;
     

@@ -26,13 +26,6 @@ export class SignalingRoom {
     this.state.acceptWebSocket(server);
     server.serializeAttachment({ peerId });
 
-    // Hantar data awal bilik kepada peer baru (termasuk senarai tracks yang sedang aktif)
-    server.send(JSON.stringify({
-      type: "room-joined",
-      peerId: peerId,
-      tracks: Array.from(this.tracks.entries()) // Menghantar trackId yang sedia ada
-    }));
-
     return new Response(null, {
       status: 101,
       webSocket: client
@@ -46,6 +39,22 @@ export class SignalingRoom {
       const senderPeerId = senderAttachment ? senderAttachment.peerId : "Unknown";
 
       data.sender = senderPeerId;
+
+      if (data.type === "join") {
+        // Hantar isyarat sertai bilik secara rasmi sekarang setelah client bersedia
+        ws.send(JSON.stringify({
+          type: "room-joined",
+          peerId: senderPeerId,
+          tracks: Array.from(this.tracks.entries())
+        }));
+
+        // Hebahkan kepada rakan lain
+        this.broadcast({
+          type: "peer-joined",
+          peerId: senderPeerId
+        }, ws);
+        return;
+      }
 
       if (data.type === "track-published") {
         // Daftarkan track baru di dalam bilik

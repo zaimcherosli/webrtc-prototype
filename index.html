@@ -24,12 +24,19 @@
             <!-- Room Setup Card -->
             <div class="card room-card">
                 <h3><i class="fa-solid fa-door-open"></i> Tetapan Bilik</h3>
-                <div class="room-input-group">
-                    <input type="text" id="input-room-id" placeholder="Contoh: bilik-sfu">
-                    <button id="btn-join-room" class="btn btn-primary" disabled>
-                        <span>Join</span>
-                    </button>
+                <div class="room-input-fields">
+                    <div class="input-field-wrapper">
+                        <label for="input-display-name">Nama Anda</label>
+                        <input type="text" id="input-display-name" placeholder="Nama Anda (cth: Zaim)">
+                    </div>
+                    <div class="input-field-wrapper">
+                        <label for="input-room-id">ID Bilik</label>
+                        <input type="text" id="input-room-id" placeholder="Contoh: bilik-sfu">
+                    </div>
                 </div>
+                <button id="btn-join-room" class="btn btn-primary" disabled>
+                    <span>Sertai Bilik</span>
+                </button>
                 <div class="peer-id-info" id="peer-id-display">ID Anda: Menjana...</div>
             </div>
 
@@ -123,6 +130,6 @@
         </section>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>
