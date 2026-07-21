@@ -25,6 +25,8 @@ const logsContainer = document.getElementById('logs');
 const chatMessages = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
 const btnSendChat = document.getElementById('btn-send-chat');
+const btnCloseSidebarMobile = document.getElementById('btn-close-sidebar-mobile');
+const btnCloseChatMobile = document.getElementById('btn-close-chat-mobile');
 
 const micIndicator = document.getElementById('mic-indicator');
 const videoIndicator = document.getElementById('video-indicator');
@@ -887,6 +889,29 @@ btnToggleSidebar.addEventListener('click', () => {
         log(isClosed ? 'Panel tetapan ditutup.' : 'Panel tetapan dibuka.', 'system');
     }
 });
+
+// Event Listeners for Mobile Overlay Close Buttons
+if (btnCloseSidebarMobile) {
+    btnCloseSidebarMobile.addEventListener('click', () => {
+        const appContainer = document.querySelector('.app-container');
+        if (appContainer) {
+            appContainer.classList.add('sidebar-closed');
+            btnToggleSidebar.classList.remove('active');
+            log('Panel tetapan ditutup (Mobile).', 'system');
+        }
+    });
+}
+if (btnCloseChatMobile) {
+    btnCloseChatMobile.addEventListener('click', () => {
+        const appContainer = document.querySelector('.app-container');
+        if (appContainer) {
+            appContainer.classList.add('chat-closed');
+            btnToggleChat.classList.remove('active');
+            log('Panel sembang ditutup (Mobile).', 'system');
+        }
+    });
+}
+
 btnJoinRoom.addEventListener('click', joinRoom);
 btnConnect.addEventListener('click', () => {
     // Bertindak sebagai butang toggle siaran (Publish/Unpublish)
@@ -1056,3 +1081,19 @@ function stopMeetingTimer() {
     }
     log('Pemasa tempoh mesyuarat dihentikan.', 'system');
 }
+
+// Tutup sidebar secara automatik jika dilancarkan pada skrin kecil (Mobile)
+function adjustLayoutForMobileOnLoad() {
+    if (window.innerWidth <= 768) {
+        const appContainer = document.querySelector('.app-container');
+        if (appContainer) {
+            appContainer.classList.add('sidebar-closed', 'chat-closed');
+            btnToggleSidebar.classList.remove('active');
+            btnToggleChat.classList.remove('active');
+            log('Layout diselaraskan untuk mod telefon (sidebars ditutup secara lalai).', 'system');
+        }
+    }
+}
+
+// Jalankan pelarasan semasa muatan pertama
+adjustLayoutForMobileOnLoad();

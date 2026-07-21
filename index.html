@@ -10,15 +10,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css?v=21">
+    <link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
     <div class="app-container">
         <!-- Sidebar: Info & Logs -->
         <aside class="sidebar">
-            <div class="brand">
-                <i class="fa-solid fa-circle-nodes brand-icon"></i>
-                <h2>WebRTC SFU Group</h2>
+            <div class="brand" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fa-solid fa-circle-nodes brand-icon"></i>
+                    <h2>WebRTC SFU Group</h2>
+                </div>
+                <button id="btn-close-sidebar-mobile" class="btn btn-secondary mobile-only-btn" style="padding: 6px 10px; border-radius: 6px;" title="Tutup">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
             
             <!-- Room Setup Card -->
@@ -129,8 +134,11 @@
 
         <!-- Right Sidebar: Chat -->
         <section class="chat-section">
-            <div class="chat-header">
-                <h3><i class="fa-solid fa-comments"></i> Sembang WebRTC (DataChannel)</h3>
+            <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h3><i class="fa-solid fa-comments"></i> Sembang WebRTC</h3>
+                <button id="btn-close-chat-mobile" class="btn btn-secondary mobile-only-btn" style="padding: 6px 10px; border-radius: 6px;" title="Tutup">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
             
             <div id="chat-messages" class="chat-messages">
@@ -148,6 +156,6 @@
         </section>
     </div>
 
-    <script src="app.js?v=21"></script>
+    <script src="app.js?v=22"></script>
 </body>
 </html>
