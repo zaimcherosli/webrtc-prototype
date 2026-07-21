@@ -46,12 +46,23 @@ body {
     transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Sidebar & Chat Toggle States */
+.app-container.sidebar-closed {
+    grid-template-columns: 0px 1fr 340px;
+}
+.app-container.sidebar-closed .sidebar {
+    display: none !important;
+}
+
 .app-container.chat-closed {
     grid-template-columns: 320px 1fr 0px;
 }
-
 .app-container.chat-closed .chat-section {
     display: none !important;
+}
+
+.app-container.sidebar-closed.chat-closed {
+    grid-template-columns: 0px 1fr 0px;
 }
 
 /* Sidebar Styling */

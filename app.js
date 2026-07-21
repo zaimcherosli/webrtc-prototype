@@ -7,6 +7,7 @@ const btnToggleVideo = document.getElementById('btn-toggle-video');
 const btnToggleAudio = document.getElementById('btn-toggle-audio');
 const btnShareScreen = document.getElementById('btn-share-screen');
 const btnToggleChat = document.getElementById('btn-toggle-chat');
+const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
 const btnConnect = document.getElementById('btn-connect');
 const btnHideControls = document.getElementById('btn-hide-controls');
 const btnShowControls = document.getElementById('btn-show-controls');
@@ -876,6 +877,14 @@ btnToggleChat.addEventListener('click', () => {
         const isClosed = appContainer.classList.toggle('chat-closed');
         btnToggleChat.classList.toggle('active', !isClosed);
         log(isClosed ? 'Panel sembang ditutup.' : 'Panel sembang dibuka.', 'system');
+    }
+});
+btnToggleSidebar.addEventListener('click', () => {
+    const appContainer = document.querySelector('.app-container');
+    if (appContainer) {
+        const isClosed = appContainer.classList.toggle('sidebar-closed');
+        btnToggleSidebar.classList.toggle('active', !isClosed);
+        log(isClosed ? 'Panel tetapan ditutup.' : 'Panel tetapan dibuka.', 'system');
     }
 });
 btnJoinRoom.addEventListener('click', joinRoom);
