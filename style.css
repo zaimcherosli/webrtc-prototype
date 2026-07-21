@@ -218,7 +218,7 @@ body {
 
 /* Video Grid Layout */
 .video-grid {
-    flex-grow: 1;
+    flex: 1 1 0; /* Grow, shrink, basis 0 to strictly obey flex height bounds */
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.25rem;
@@ -630,6 +630,9 @@ video {
     grid-row: 1 / -1;
     aspect-ratio: auto;
     height: 100%;
+    width: 100%;
+    align-self: center; /* Center screen share vertically in grid area */
+    justify-self: center; /* Center screen share horizontally in grid area */
     border-color: var(--accent);
     box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
 }
