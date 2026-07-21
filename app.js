@@ -43,6 +43,7 @@ let pcSubscribe = null; // PeerConnection for subscribing (receiving)
 let sessionIdPublish = null;
 let sessionIdSubscribe = null;
 let timerInterval = null; // Pemasa mesyuarat
+let activePeers = new Set(); // Set untuk menjejaki ID peserta aktif di dalam bilik
 
 // Track mappings
 let myPublishedTracks = []; // [{ trackId, label }]
@@ -210,17 +211,26 @@ async function handleSignalingMessage(data) {
             log(`Anda menyertai bilik "${currentRoomId}" sebagai ${data.peerId}`, 'success');
             btnConnect.disabled = false; // Boleh publish media sekarang
             
-            // Langgan semua track yang sedia ada di dalam bilik
+            // Simpan ahli aktif berdasarkan tracks yang diterima
+            activePeers.clear();
             if (data.tracks && data.tracks.length > 0) {
                 log(`Menjumpai ${data.tracks.length} track aktif di dalam bilik. Menyambung langganan...`, 'info');
                 for (const [trackId, info] of data.tracks) {
+                    if (info.peerId && info.peerId !== myPeerId) {
+                        activePeers.add(info.peerId);
+                    }
                     await subscribeToTrack(trackId, info.sessionId, info.peerId, info.label);
                 }
             }
+            updateParticipantCount();
             break;
             
         case 'track-published':
             log(`Peserta ${data.sender} menerbitkan track ${data.label} (${data.trackId})`, 'info');
+            if (data.sender && data.sender !== myPeerId) {
+                activePeers.add(data.sender);
+                updateParticipantCount();
+            }
             await subscribeToTrack(data.trackId, data.sessionId, data.sender, data.label);
             break;
             
@@ -229,8 +239,17 @@ async function handleSignalingMessage(data) {
             removeVideoTrackElement(data.trackId, data.sender);
             break;
             
+        case 'peer-joined':
+            log(`Peserta baru menyertai bilik: ${data.peerId}`, 'info');
+            activePeers.add(data.peerId);
+            updateParticipantCount();
+            break;
+            
         case 'peer-left':
             log(`Peserta ${data.peerId} meninggalkan bilik panggilan.`, 'warning');
+            activePeers.delete(data.peerId);
+            updateParticipantCount();
+            
             if (data.deletedTracks) {
                 data.deletedTracks.forEach(trackId => {
                     removeVideoTrackElement(trackId, data.peerId);
@@ -242,6 +261,10 @@ async function handleSignalingMessage(data) {
             break;
 
         case 'chat':
+            const isChatClosed = document.querySelector('.app-container').classList.contains('chat-closed');
+            if (isChatClosed) {
+                showChatToast(data.sender, data.text);
+            }
             appendMessage(data.sender === myPeerId ? 'Anda' : `Rakan (${data.sender})`, data.text, data.sender === myPeerId ? 'local' : 'remote');
             break;
             
@@ -517,6 +540,10 @@ function disconnectCall() {
     sessionIdPublish = null;
     sessionIdSubscribe = null;
     
+    // Bersihkan senarai ahli aktif
+    activePeers.clear();
+    updateParticipantCount();
+    
     // Bersihkan grid video dinamik (buang semua video remote)
     const remoteWrappers = videoContainer.querySelectorAll('.video-wrapper:not(#local-video-wrapper)');
     remoteWrappers.forEach(w => w.remove());
@@ -574,6 +601,52 @@ function appendMessage(sender, text, type = 'local') {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+// Memaparkan Notifikasi Toast apabila Sembang Masuk semasa Panel Sembang Ditutup
+function showChatToast(sender, text) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = 'chat-toast';
+    
+    // Bersihkan nama pengirim daripada label tambahan jika ada
+    const senderName = sender.replace('Rakan (', '').replace(')', '');
+    
+    toast.innerHTML = `
+        <div style="font-weight: 700; color: var(--accent); font-size: 0.75rem; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-comment"></i> Mesej Baru daripada ${senderName}
+        </div>
+        <div style="margin-top: 3px; word-break: break-all; opacity: 0.95; line-height: 1.3;">${text}</div>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Slaid keluar dan padam selepas 4.5 saat
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(50px) scale(0.95)';
+        setTimeout(() => toast.remove(), 400);
+    }, 4500);
+}
+
+// Mengemas kini Lencana Bilangan Peserta (Participant Count) secara langsung
+function updateParticipantCount() {
+    const badge = document.getElementById('participant-count');
+    if (!badge) return;
+    
+    // Tunjukkan badge jika aktif dalam panggilan/simulasi
+    const isActive = (socket && socket.readyState === WebSocket.OPEN) || isMockMode;
+    
+    if (isActive) {
+        badge.style.display = 'flex';
+        // Jumlah = senarai aktif + 1 (diri sendiri)
+        const total = activePeers.size + 1;
+        badge.innerHTML = `<i class="fa-solid fa-users"></i> ${total} Orang`;
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
 // 9. Mod Simulasi Panggilan (Fallback Mock Mode)
 // Ini akan dijalankan sekiranya pengguna tiada Cloudflare Calls App ID/Token
 // Ia membolehkan pengguna menguji reka bentuk UI panggilan berkumpulan & chat secara simulasi tempatan
@@ -598,11 +671,15 @@ function startMockCall() {
     // Cipta 2 peserta simulasi (Mock Peer A & B) pada grid selepas 1 saat
     setTimeout(() => {
         log('Peserta simulasi "Rakan (Ali)" menyertai panggilan.', 'info');
+        activePeers.add('Ali');
+        updateParticipantCount();
         displayRemoteStream(localStream, 'mock-track-1', 'Ali');
     }, 1000);
     
     setTimeout(() => {
         log('Peserta simulasi "Rakan (Siti)" menyertai panggilan.', 'info');
+        activePeers.add('Siti');
+        updateParticipantCount();
         displayRemoteStream(localStream, 'mock-track-2', 'Siti');
     }, 2500);
 
@@ -618,6 +695,10 @@ function startMockCall() {
         const randomPeer = Math.random() > 0.5 ? 'Ali' : 'Siti';
         const randomText = mockMessages[Math.floor(Math.random() * mockMessages.length)];
         
+        const isChatClosed = document.querySelector('.app-container').classList.contains('chat-closed');
+        if (isChatClosed) {
+            showChatToast(`Rakan (${randomPeer})`, randomText);
+        }
         appendMessage(`Rakan (${randomPeer})`, randomText, 'remote');
     }, 8000);
     
@@ -630,6 +711,9 @@ function stopMockCall() {
         clearInterval(mockInterval);
         mockInterval = null;
     }
+    
+    activePeers.clear();
+    updateParticipantCount();
     
     const remoteWrappers = videoContainer.querySelectorAll('.video-wrapper:not(#local-video-wrapper)');
     remoteWrappers.forEach(w => w.remove());
