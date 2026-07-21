@@ -71,7 +71,11 @@ function log(message, type = 'system') {
 
 // Helper to make API calls to backend proxy
 async function apiRequest(endpoint, method, body = null) {
-    const response = await fetch(`http://${window.location.hostname}:8787/room/${currentRoomId}/calls/${endpoint}`, {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const apiHost = isLocalhost ? `${window.location.hostname}:8787` : window.location.hostname;
+    const apiProtocol = window.location.protocol; // Menggunakan https atau http mengikut persekitaran semasa
+    
+    const response = await fetch(`${apiProtocol}//${apiHost}/room/${currentRoomId}/calls/${endpoint}`, {
         method: method,
         headers: {
             'Content-Type': 'application/json'
@@ -141,7 +145,9 @@ function joinRoom() {
     log(`Menyambung ke bilik: ${roomId}...`, 'info');
     
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:8787/room/${roomId}?peerId=${myPeerId}`;
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const wsHost = isLocalhost ? `${window.location.hostname}:8787` : window.location.hostname;
+    const wsUrl = `${protocol}//${wsHost}/room/${roomId}?peerId=${myPeerId}`;
     
     try {
         socket = new WebSocket(wsUrl);
@@ -913,6 +919,13 @@ if (btnCloseChatMobile) {
 }
 
 btnJoinRoom.addEventListener('click', joinRoom);
+inputDisplayName.addEventListener('input', () => {
+    const displayName = inputDisplayName.value.trim();
+    const localLabelBadge = document.querySelector('#local-video-wrapper .label-badge');
+    if (localLabelBadge) {
+        localLabelBadge.innerHTML = `<i class="fa-solid fa-user"></i> ${displayName || 'Anda'} (Local)`;
+    }
+});
 btnConnect.addEventListener('click', () => {
     // Bertindak sebagai butang toggle siaran (Publish/Unpublish)
     if (sessionIdPublish || isMockMode) {
