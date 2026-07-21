@@ -8,7 +8,6 @@ const btnToggleAudio = document.getElementById('btn-toggle-audio');
 const btnShareScreen = document.getElementById('btn-share-screen');
 const btnToggleChat = document.getElementById('btn-toggle-chat');
 const btnConnect = document.getElementById('btn-connect');
-const btnDisconnect = document.getElementById('btn-disconnect');
 
 const inputDisplayName = document.getElementById('input-display-name');
 const inputRoomId = document.getElementById('input-room-id');
@@ -345,7 +344,12 @@ async function connectCall() {
         connectionStatus.className = 'status-badge connected';
         connectionStatus.innerHTML = '<i class="fa-solid fa-circle"></i> Panggilan: Bersiar';
         
-        btnDisconnect.disabled = false;
+        // Tukar butang Publish kepada butang Unpublish (Danger Red)
+        btnConnect.disabled = false;
+        btnConnect.className = 'btn btn-danger';
+        btnConnect.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
+        btnConnect.title = 'Tamatkan Siaran (Unpublish)';
+        
         chatInput.disabled = false;
         btnSendChat.disabled = false;
         
@@ -508,8 +512,11 @@ function disconnectCall() {
     connectionStatus.className = 'status-badge disconnected';
     connectionStatus.innerHTML = '<i class="fa-solid fa-circle-dot"></i> Panggilan: Tiada';
     
-    btnDisconnect.disabled = true;
+    // Kembalikan butang Publish kepada butang asalnya (Green)
     btnConnect.disabled = false;
+    btnConnect.className = 'btn btn-success';
+    btnConnect.innerHTML = '<i class="fa-solid fa-tower-broadcast"></i>';
+    btnConnect.title = 'Mula Bersiaran (Publish)';
     
     chatInput.disabled = true;
     btnSendChat.disabled = true;
@@ -544,7 +551,12 @@ function startMockCall() {
     connectionStatus.className = 'status-badge connected';
     connectionStatus.innerHTML = '<i class="fa-solid fa-circle"></i> Panggilan: Simulasi';
     
-    btnDisconnect.disabled = false;
+    // Tukar butang kepada butang Unpublish semasa simulasi
+    btnConnect.disabled = false;
+    btnConnect.className = 'btn btn-danger';
+    btnConnect.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
+    btnConnect.title = 'Tamatkan Siaran (Unpublish)';
+    
     chatInput.disabled = false;
     btnSendChat.disabled = false;
     
@@ -590,8 +602,11 @@ function stopMockCall() {
     connectionStatus.className = 'status-badge disconnected';
     connectionStatus.innerHTML = '<i class="fa-solid fa-circle-dot"></i> Panggilan: Tiada';
     
-    btnDisconnect.disabled = true;
+    // Kembalikan butang Publish kepada butang asalnya (Green)
     btnConnect.disabled = false;
+    btnConnect.className = 'btn btn-success';
+    btnConnect.innerHTML = '<i class="fa-solid fa-tower-broadcast"></i>';
+    btnConnect.title = 'Mula Bersiaran (Publish)';
     
     chatInput.disabled = true;
     btnSendChat.disabled = true;
@@ -741,8 +756,18 @@ btnToggleChat.addEventListener('click', () => {
     }
 });
 btnJoinRoom.addEventListener('click', joinRoom);
-btnConnect.addEventListener('click', connectCall);
-btnDisconnect.addEventListener('click', disconnectCall);
+btnConnect.addEventListener('click', () => {
+    // Bertindak sebagai butang toggle siaran (Publish/Unpublish)
+    if (sessionIdPublish || isMockMode) {
+        if (isMockMode) {
+            stopMockCall();
+        } else {
+            disconnectCall();
+        }
+    } else {
+        connectCall();
+    }
+});
 
 btnSendChat.addEventListener('click', sendChatMessage);
 chatInput.addEventListener('keyup', (e) => {
