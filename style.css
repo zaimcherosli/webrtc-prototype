@@ -186,6 +186,9 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 0.85rem;
+    margin-bottom: 0.25rem;
 }
 
 .main-header h1 {
@@ -193,41 +196,82 @@ body {
     font-weight: 600;
 }
 
-/* Connection Badges */
+/* Connection Badges (Premium UI) */
 .status-badge {
-    padding: 6px 14px;
-    border-radius: 9999px;
-    font-size: 0.8rem;
+    padding: 6px 12px;
+    border-radius: 8px; /* Elegant square rounded widgets */
+    font-size: 0.75rem;
     font-weight: 600;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    backdrop-filter: blur(5px);
+    gap: 6px;
+    background: rgba(30, 41, 59, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    backdrop-filter: blur(8px);
     transition: var(--transition-smooth);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
+.status-badge i {
+    font-size: 0.75rem;
+}
+
+/* Status colors and glowing animations */
 .status-badge.disconnected {
-    background-color: rgba(239, 68, 68, 0.15);
-    color: var(--danger);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background-color: rgba(239, 68, 68, 0.06);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.18);
+}
+.status-badge.disconnected i {
+    text-shadow: 0 0 6px #ef4444;
 }
 
 .status-badge.connecting {
-    background-color: rgba(245, 158, 11, 0.15);
+    background-color: rgba(245, 158, 11, 0.06);
     color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    animation: pulse 1.5s infinite;
+    border-color: rgba(245, 158, 11, 0.18);
+}
+.status-badge.connecting i {
+    text-shadow: 0 0 6px #f59e0b;
+    animation: status-pulse 1.2s infinite;
 }
 
 .status-badge.connected {
-    background-color: rgba(16, 185, 129, 0.15);
-    color: var(--success);
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background-color: rgba(16, 185, 129, 0.06);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.18);
+}
+.status-badge.connected i {
+    text-shadow: 0 0 6px #10b981;
+    animation: status-pulse 2s infinite;
 }
 
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+/* Participant Count & Timer Special Style */
+#participant-count {
+    background-color: rgba(6, 182, 212, 0.08);
+    color: var(--accent);
+    border-color: rgba(6, 182, 212, 0.2);
+}
+#participant-count i {
+    text-shadow: 0 0 6px var(--accent);
+}
+
+#meeting-timer {
+    background-color: rgba(6, 182, 212, 0.08);
+    color: var(--accent);
+    border-color: rgba(6, 182, 212, 0.2);
+    font-family: monospace, var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+#meeting-timer i {
+    text-shadow: 0 0 6px var(--accent);
+}
+
+@keyframes status-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.95); }
 }
 
 /* Video Grid Layout */
@@ -631,18 +675,7 @@ video {
     gap: 0.75rem;
 }
 
-/* Update ws-status colors */
-#ws-status.disconnected {
-    background-color: rgba(239, 68, 68, 0.15);
-    color: var(--danger);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-#ws-status.connected {
-    background-color: rgba(16, 185, 129, 0.15);
-    color: var(--success);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-}
+/* Update ws-status colors (Cleaned up, centralized) */
 
 /* Screen Sharing Full Grid Mode */
 .video-grid.screen-sharing-active .video-wrapper:not(.sharing-screen) {
@@ -661,17 +694,7 @@ video {
     box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
 }
 
-/* Meeting Timer Badge Styles */
-#meeting-timer {
-    background-color: rgba(6, 182, 212, 0.12);
-    color: var(--accent);
-    border: 1px solid rgba(6, 182, 212, 0.35);
-    font-family: monospace, var(--font-sans);
-    font-size: 0.9rem;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
-}
+/* Meeting Timer Badge Styles (Cleaned up, centralized) */
 
 /* Floating Show Controls Button */
 .show-controls-btn {
