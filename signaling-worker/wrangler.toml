@@ -2,6 +2,11 @@ name = "webrtc-signaling"
 main = "src/index.js"
 compatibility_date = "2024-04-01"
 
+[vars]
+# App ID daripada Cloudflare Calls Dashboard.
+# Boleh digantikan dengan App ID sebenar anda.
+CALLS_APP_ID = "YOUR_CALLS_APP_ID" 
+
 [durable_objects]
 bindings = [
   { name = "SIGNALING_ROOM", class_name = "SignalingRoom" }

@@ -1,6 +1,6 @@
 // DOM Elements
+const videoContainer = document.getElementById('video-container');
 const localVideo = document.getElementById('local-video');
-const remoteVideo = document.getElementById('remote-video');
 
 const btnStartMedia = document.getElementById('btn-start-media');
 const btnToggleVideo = document.getElementById('btn-toggle-video');
@@ -27,18 +27,24 @@ const screenIndicator = document.getElementById('screen-indicator');
 
 // WebRTC & WebSocket State Variables
 let myPeerId = 'peer-' + Math.random().toString(36).substr(2, 6);
-let targetPeerId = null;
 let currentRoomId = null;
 
 let localStream = null;
 let screenStream = null;
-let peerConnection = null;
-let dataChannel = null; // Used for E2E WebRTC chat
-let socket = null; // WebSocket connection to signaling server
+let socket = null; // WebSocket to signaling server
 
+// Cloudflare Calls SFU State
+let pcPublish = null; // PeerConnection for publishing (sending)
+let pcSubscribe = null; // PeerConnection for subscribing (receiving)
+let sessionIdPublish = null;
+let sessionIdSubscribe = null;
+
+// Track mappings
+let myPublishedTracks = []; // [{ trackId, label }]
 let isVideoMuted = false;
 let isAudioMuted = false;
 let isSharingScreen = false;
+let isMockMode = false; // Set to true if Cloudflare Calls credentials are missing
 
 // Display Generated Peer ID
 peerIdDisplay.textContent = `ID Anda: ${myPeerId}`;
@@ -52,6 +58,24 @@ function log(message, type = 'system') {
     logsContainer.appendChild(entry);
     logsContainer.scrollTop = logsContainer.scrollHeight;
     console.log(`[${type.toUpperCase()}] ${message}`);
+}
+
+// Helper to make API calls to backend proxy
+async function apiRequest(endpoint, method, body = null) {
+    const response = await fetch(`http://${window.location.hostname}:8787/room/${currentRoomId}/calls/${endpoint}`, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: body ? JSON.stringify(body) : null
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
 }
 
 // 1. Dapatkan Kebenaran Kamera & Mikrofon (Start Media)
@@ -71,7 +95,7 @@ async function startMedia() {
         btnToggleVideo.disabled = false;
         btnToggleAudio.disabled = false;
         btnShareScreen.disabled = false;
-        btnJoinRoom.disabled = false; // Aktifkan butang sertai bilik selepas ada media
+        btnJoinRoom.disabled = false;
         
         micIndicator.classList.remove('disabled');
         micIndicator.innerHTML = '<i class="fa-solid fa-microphone"></i>';
@@ -95,7 +119,6 @@ function joinRoom() {
     currentRoomId = roomId;
     log(`Menyambung ke bilik: ${roomId}...`, 'info');
     
-    // Tentukan URL WebSocket secara automatik berdasarkan host semasa (biasanya localhost:8787)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.hostname}:8787/room/${roomId}?peerId=${myPeerId}`;
     
@@ -107,7 +130,6 @@ function joinRoom() {
             wsStatus.className = 'status-badge connected';
             wsStatus.innerHTML = '<i class="fa-solid fa-circle-nodes"></i> WS: Aktif';
             
-            // Kunci input bilik
             inputRoomId.disabled = true;
             btnJoinRoom.disabled = true;
         };
@@ -124,8 +146,8 @@ function joinRoom() {
             resetRoomUI();
         };
         
-        socket.onerror = (error) => {
-            log(`Ralat WebSocket: Hubungan gagal. Sila pastikan Cloudflare Worker sedang berjalan di port 8787.`, 'error');
+        socket.onerror = () => {
+            log(`Ralat WebSocket. Sila pastikan Cloudflare Worker sedang berjalan di port 8787.`, 'error');
         };
         
     } catch (e) {
@@ -144,48 +166,46 @@ function resetRoomUI() {
 async function handleSignalingMessage(data) {
     switch (data.type) {
         case 'room-joined':
-            log(`Anda telah menyertai bilik "${currentRoomId}" sebagai ${data.peerId}`, 'success');
-            if (data.peers && data.peers.length > 0) {
-                targetPeerId = data.peers[0]; // Set peer pertama sebagai target panggilan
-                log(`Rakan sedia ada dikesan: ${targetPeerId}. Anda boleh memulakan panggilan.`, 'info');
-                btnConnect.disabled = false;
-            } else {
-                log('Menunggu rakan lain untuk masuk ke dalam bilik...', 'info');
+            log(`Anda menyertai bilik "${currentRoomId}" sebagai ${data.peerId}`, 'success');
+            btnConnect.disabled = false; // Boleh publish media sekarang
+            
+            // Langgan semua track yang sedia ada di dalam bilik
+            if (data.tracks && data.tracks.length > 0) {
+                log(`Menjumpai ${data.tracks.length} track aktif di dalam bilik. Menyambung langganan...`, 'info');
+                for (const [trackId, info] of data.tracks) {
+                    await subscribeToTrack(trackId, info.sessionId, info.peerId, info.label);
+                }
             }
             break;
             
-        case 'peer-joined':
-            targetPeerId = data.peerId;
-            log(`Rakan baru masuk: ${targetPeerId}. Sedia untuk dihubungi.`, 'info');
-            btnConnect.disabled = false;
+        case 'track-published':
+            log(`Peserta ${data.sender} menerbitkan track ${data.label} (${data.trackId})`, 'info');
+            await subscribeToTrack(data.trackId, data.sessionId, data.sender, data.label);
+            break;
+            
+        case 'track-unpublished':
+            log(`Peserta ${data.sender} menghentikan track ${data.trackId}`, 'warning');
+            removeVideoTrackElement(data.trackId, data.sender);
             break;
             
         case 'peer-left':
-            log(`Rakan ${data.peerId} telah meninggalkan bilik.`, 'warning');
-            if (data.peerId === targetPeerId) {
-                targetPeerId = null;
-                btnConnect.disabled = true;
-                disconnectCall();
+            log(`Peserta ${data.peerId} meninggalkan bilik panggilan.`, 'warning');
+            if (data.deletedTracks) {
+                data.deletedTracks.forEach(trackId => {
+                    removeVideoTrackElement(trackId, data.peerId);
+                });
             }
+            // Bersihkan wrapper video kosong jika ada
+            const wrapper = document.getElementById(`video-${data.peerId}`);
+            if (wrapper) wrapper.remove();
             break;
-            
-        case 'offer':
-            targetPeerId = data.sender;
-            log(`Menerima isyarat Panggilan (SDP Offer) daripada ${data.sender}`, 'info');
-            await handleOffer(data);
-            break;
-            
-        case 'answer':
-            log(`Menerima jawapan Panggilan (SDP Answer) daripada ${data.sender}`, 'info');
-            await handleAnswer(data);
-            break;
-            
-        case 'candidate':
-            await handleCandidate(data);
+
+        case 'chat':
+            appendMessage(data.sender === myPeerId ? 'Anda' : `Rakan (${data.sender})`, data.text, data.sender === myPeerId ? 'local' : 'remote');
             break;
             
         default:
-            log(`Isyarat tidak dikenali: ${data.type}`, 'warning');
+            break;
     }
 }
 
@@ -193,230 +213,265 @@ async function handleSignalingMessage(data) {
 function sendSignalingMessage(message) {
     if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify(message));
-    } else {
-        log('Ralat: WebSocket tidak aktif. Isyarat gagal dihantar.', 'error');
     }
 }
 
-// 4. Proses WebRTC: Membina Peer Connection (Initiator)
+// 4. Mula Bersiar: Publish Media ke Cloudflare Calls
 async function connectCall() {
-    log(`Memulakan panggilan WebRTC ke peranti ${targetPeerId}...`, 'info');
+    log('Memulakan sesi bersiaran ke Cloudflare Calls...', 'info');
     
     connectionStatus.className = 'status-badge connecting';
     connectionStatus.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyambung...';
     
     btnConnect.disabled = true;
     
-    // Bina Peer Connection
-    createPeerConnection();
-    
-    // Cipta DataChannel untuk chat (Initiator)
-    dataChannel = peerConnection.createDataChannel('chatChannel');
-    setupDataChannelEvents();
-    
-    try {
-        log('Mencipta SDP Offer...', 'system');
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        
-        sendSignalingMessage({
-            type: 'offer',
-            target: targetPeerId,
-            sdp: offer
-        });
-        
-        log('SDP Offer berjaya dihantar ke WebSocket.', 'success');
-    } catch (e) {
-        log(`Gagal membina panggilan: ${e.message}`, 'error');
-        disconnectCall();
-    }
-}
-
-// 5. Cipta Objek RTCPeerConnection & Event Handlers
-function createPeerConnection() {
-    if (peerConnection) return;
-    
-    log('Mencipta RTCPeerConnection...', 'system');
     const configuration = {
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
     
-    peerConnection = new RTCPeerConnection(configuration);
-    
-    // Hantar ICE candidates kita ke pihak sebelah melalui WebSocket
-    peerConnection.onicecandidate = event => {
-        if (event.candidate && targetPeerId) {
-            sendSignalingMessage({
-                type: 'candidate',
-                target: targetPeerId,
-                candidate: event.candidate
+    try {
+        // Cipta PeerConnection untuk Bersiaran (Publish)
+        pcPublish = new RTCPeerConnection(configuration);
+        
+        // Masukkan track media kamera/mic kita
+        const activeStream = isSharingScreen ? screenStream : localStream;
+        if (activeStream) {
+            activeStream.getTracks().forEach(track => {
+                pcPublish.addTrack(track, activeStream);
             });
+            log('Media local dimasukkan ke dalam Publish Connection.', 'system');
         }
-    };
-    
-    // Terima stream video/audio pihak sebelah
-    peerConnection.ontrack = event => {
-        log('Menerima stream video/audio dari pihak jauh!', 'success');
-        if (remoteVideo.srcObject !== event.streams[0]) {
-            remoteVideo.srcObject = event.streams[0];
+        
+        // Cipta Offer tempatan
+        const offer = await pcPublish.createOffer();
+        await pcPublish.setLocalDescription(offer);
+        
+        // Hantar Offer ke API backend untuk cipta sesi baru
+        let sessionRes;
+        try {
+            sessionRes = await apiRequest('session', 'POST', {
+                sessionDescription: {
+                    type: 'offer',
+                    sdp: offer.sdp
+                }
+            });
+        } catch (apiError) {
+            if (apiError.message.includes('CREDENTIALS_MISSING')) {
+                log('Kredensial Cloudflare Calls tiada! Beralih ke SIMULASI MOCK bilik panggilan...', 'warning');
+                startMockCall();
+                return;
+            }
+            throw apiError;
         }
-    };
-    
-    // Pantau status sambungan
-    peerConnection.onconnectionstatechange = () => {
-        log(`Status WebRTC bertukar: ${peerConnection.connectionState}`, 'info');
         
-        if (peerConnection.connectionState === 'connected') {
-            connectionStatus.className = 'status-badge connected';
-            connectionStatus.innerHTML = '<i class="fa-solid fa-circle"></i> Panggilan: Aktif';
-            btnDisconnect.disabled = false;
-        } else if (peerConnection.connectionState === 'disconnected' || 
-                   peerConnection.connectionState === 'failed' || 
-                   peerConnection.connectionState === 'closed') {
-            disconnectCall();
-        }
-    };
-    
-    // Masukkan track media local (kamera/screen) ke dalam sambungan
-    const activeStream = isSharingScreen ? screenStream : localStream;
-    if (activeStream) {
-        activeStream.getTracks().forEach(track => {
-            peerConnection.addTrack(track, activeStream);
-        });
-        log('Local tracks berjaya dimasukkan ke PeerConnection.', 'system');
-    }
-}
-
-// 6. Menguruskan Tawaran Panggilan Masuk (Offer Receiver)
-async function handleOffer(data) {
-    createPeerConnection();
-    
-    // Mendengar kemasukan DataChannel daripada pemanggil
-    peerConnection.ondatachannel = event => {
-        dataChannel = event.channel;
-        setupDataChannelEvents();
-    };
-    
-    try {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        log('Set Remote Description (Offer) selesai.', 'system');
+        sessionIdPublish = sessionRes.sessionId;
+        log(`Sesi Bersiaran Cloudflare berjaya dibina: ${sessionIdPublish}`, 'success');
         
-        log('Mencipta SDP Answer...', 'system');
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
+        // Tetapkan Remote Description (Answer) daripada Cloudflare
+        await pcPublish.setRemoteDescription(new RTCSessionDescription(sessionRes.sessionDescription));
         
-        sendSignalingMessage({
-            type: 'answer',
-            target: data.sender,
-            sdp: answer
+        // Menerbitkan Track ke Cloudflare
+        const transceivers = pcPublish.getTransceivers();
+        const tracksToPublish = transceivers
+            .filter(t => t.sender.track)
+            .map(t => ({
+                location: 'local',
+                mid: t.mid,
+                trackName: t.sender.track.id
+            }));
+            
+        log('Mengisi pendaftaran track ke Cloudflare Calls...', 'system');
+        const publishRes = await apiRequest(`sessions/${sessionIdPublish}/tracks`, 'POST', {
+            tracks: tracksToPublish
         });
         
-        log('SDP Answer dihantar ke pemanggil.', 'success');
-    } catch (e) {
-        log(`Gagal menjawab panggilan: ${e.message}`, 'error');
-    }
-}
-
-// 7. Menguruskan Jawapan Panggilan Diterima (Answer Receiver)
-async function handleAnswer(data) {
-    try {
-        if (peerConnection) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            log('Set Remote Description (Answer) selesai. Jaluan panggilan ditubuhkan.', 'success');
+        // Jalankan proses Renegotiation yang dikehendaki oleh Cloudflare
+        if (publishRes.requiresRenegotiation) {
+            log('Renegotiation diperlukan untuk pengesahan track...', 'system');
+            await pcPublish.setRemoteDescription(new RTCSessionDescription(publishRes.sessionDescription));
+            
+            const answer = await pcPublish.createAnswer();
+            await pcPublish.setLocalDescription(answer);
+            
+            // Hantar Answer kembali ke endpoint renegotiate
+            await apiRequest(`sessions/${sessionIdPublish}/renegotiate`, 'PUT', {
+                sessionDescription: {
+                    type: 'answer',
+                    sdp: answer.sdp
+                }
+            });
+            log('Renegotiation selesai.', 'success');
         }
-    } catch (e) {
-        log(`Gagal melengkapkan panggilan: ${e.message}`, 'error');
-    }
-}
-
-// 8. Menguruskan Kemasukan ICE Candidate
-async function handleCandidate(data) {
-    try {
-        if (peerConnection) {
-            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-            log('ICE Candidate berjaya ditambah.', 'system');
-        }
-    } catch (e) {
-        log(`Ralat menambah ICE Candidate: ${e.message}`, 'error');
-    }
-}
-
-// 9. Setup Event bagi RTCDataChannel Chat
-function setupDataChannelEvents() {
-    if (!dataChannel) return;
-    
-    dataChannel.onopen = () => {
-        log('Saluran RTCDataChannel sedia untuk permesejan disulitkan (E2EE).', 'success');
+        
+        // Simpan maklumat track dan hebahkan ke WebSocket bilik panggilan
+        myPublishedTracks = publishRes.tracks;
+        myPublishedTracks.forEach(track => {
+            const label = track.mid === '0' ? 'video' : 'audio';
+            sendSignalingMessage({
+                type: 'track-published',
+                trackId: track.trackId,
+                sessionId: sessionIdPublish,
+                label: label
+            });
+            log(`Menyebarkan track baru ke bilik: ${label} (${track.trackId})`, 'system');
+        });
+        
+        connectionStatus.className = 'status-badge connected';
+        connectionStatus.innerHTML = '<i class="fa-solid fa-circle"></i> Panggilan: Bersiar';
+        
+        btnDisconnect.disabled = false;
         chatInput.disabled = false;
         btnSendChat.disabled = false;
         
-        // Bersihkan mesej pembuka
-        chatMessages.innerHTML = '';
-        const systemMsg = document.createElement('div');
-        systemMsg.className = 'chat-system-message';
-        systemMsg.innerHTML = '<i class="fa-solid fa-lock"></i> Chat WebRTC Disulitkan sepenuhnya (E2EE).';
-        chatMessages.appendChild(systemMsg);
-    };
-    
-    dataChannel.onmessage = event => {
-        appendMessage('Rakan (Remote)', event.data, 'remote');
-    };
-    
-    dataChannel.onclose = () => {
-        log('Saluran RTCDataChannel ditutup.', 'warning');
-        chatInput.disabled = true;
-        btnSendChat.disabled = true;
-    };
-}
-
-// 10. Hantar Mesej Chat
-function sendChatMessage() {
-    const text = chatInput.value.trim();
-    if (!text) return;
-    
-    if (dataChannel && dataChannel.readyState === 'open') {
-        dataChannel.send(text);
-        appendMessage('Anda (Local)', text, 'local');
-        chatInput.value = '';
-    } else {
-        log('Gagal hantar chat: Saluran tidak aktif.', 'error');
+    } catch (error) {
+        log(`Gagal memulakan panggilan: ${error.message}`, 'error');
+        disconnectCall();
     }
 }
 
-function appendMessage(sender, text, type) {
-    const bubble = document.createElement('div');
-    bubble.className = `chat-bubble ${type}`;
+// 5. Langgan (Subscribe) Track Peserta Lain dari Cloudflare Calls
+async function subscribeToTrack(trackId, publisherSessionId, publisherPeerId, label) {
+    if (isMockMode) return; // Langkau jika dalam mod simulasi
     
-    const senderSpan = document.createElement('span');
-    senderSpan.className = 'sender-name';
-    senderSpan.textContent = sender;
+    log(`Memulakan langganan track ${label} (${trackId}) daripada ${publisherPeerId}...`, 'info');
     
-    const textNode = document.createTextNode(text);
+    const configuration = {
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    };
     
-    bubble.appendChild(senderSpan);
-    bubble.appendChild(textNode);
-    
-    chatMessages.appendChild(bubble);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    try {
+        // Cipta PeerConnection untuk Langganan jika belum ada (Satu connection menerima semua stream)
+        if (!pcSubscribe) {
+            pcSubscribe = new RTCPeerConnection(configuration);
+            
+            pcSubscribe.ontrack = event => {
+                const track = event.track;
+                const stream = event.streams[0] || new MediaStream([track]);
+                log(`Track audio/video remote diterima untuk ${track.id}!`, 'success');
+                displayRemoteStream(stream, track.id, publisherPeerId);
+            };
+            
+            // Cipta sesi Subscribe baru di Cloudflare (Offer Kosong dahulu)
+            const offer = await pcSubscribe.createOffer();
+            await pcSubscribe.setLocalDescription(offer);
+            
+            const sessionRes = await apiRequest('session', 'POST', {
+                sessionDescription: {
+                    type: 'offer',
+                    sdp: offer.sdp
+                }
+            });
+            
+            sessionIdSubscribe = sessionRes.sessionId;
+            await pcSubscribe.setRemoteDescription(new RTCSessionDescription(sessionRes.sessionDescription));
+            log(`Sesi Langganan Cloudflare dibina: ${sessionIdSubscribe}`, 'success');
+        }
+        
+        // Tambah track remote ke dalam sesi subscribe kita
+        const subscribeRes = await apiRequest(`sessions/${sessionIdSubscribe}/tracks`, 'POST', {
+            tracks: [{
+                location: 'remote',
+                sessionId: publisherSessionId,
+                trackId: trackId
+            }]
+        });
+        
+        // Jalankan proses Renegotiation
+        if (subscribeRes.requiresRenegotiation) {
+            await pcSubscribe.setRemoteDescription(new RTCSessionDescription(subscribeRes.sessionDescription));
+            
+            const answer = await pcSubscribe.createAnswer();
+            await pcSubscribe.setLocalDescription(answer);
+            
+            await apiRequest(`sessions/${sessionIdSubscribe}/renegotiate`, 'PUT', {
+                sessionDescription: {
+                    type: 'answer',
+                    sdp: answer.sdp
+                }
+            });
+            log(`Track ${label} berjaya dilanggan!`, 'success');
+        }
+        
+    } catch (error) {
+        log(`Gagal melanggan track: ${error.message}`, 'error');
+    }
 }
 
-// 11. Tamatkan Panggilan
+// 6. Paparkan Video Dinamik Remote pada Grid
+function displayRemoteStream(stream, trackId, peerId) {
+    // Cari jika kotak video peserta ini sudah wujud
+    let wrapper = document.getElementById(`video-${peerId}`);
+    
+    if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'video-wrapper';
+        wrapper.id = `video-${peerId}`;
+        
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        video.id = `video-el-${peerId}`;
+        
+        const label = document.createElement('div');
+        label.className = 'video-label';
+        label.innerHTML = `<span class="label-badge"><i class="fa-solid fa-user-friends"></i> Rakan (${peerId})</span>`;
+        
+        wrapper.appendChild(video);
+        wrapper.appendChild(label);
+        videoContainer.appendChild(wrapper);
+    }
+    
+    const videoElement = document.getElementById(`video-el-${peerId}`);
+    if (videoElement) {
+        videoElement.srcObject = stream;
+        videoElement.play().catch(e => console.error("Video play fail:", e));
+    }
+}
+
+// Padam video peserta tertentu
+function removeVideoTrackElement(trackId, peerId) {
+    const wrapper = document.getElementById(`video-${peerId}`);
+    if (wrapper) {
+        wrapper.remove();
+        log(`Paparan video ${peerId} dipadam.`, 'info');
+    }
+}
+
+// 7. Tamatkan Siaran / Sesi (Unpublish & Clean)
 function disconnectCall() {
-    if (peerConnection || dataChannel) {
-        log('Memutuskan sambungan panggilan WebRTC...', 'warning');
+    if (isMockMode) {
+        stopMockCall();
+        return;
+    }
+
+    if (pcPublish || pcSubscribe) {
+        log('Menamatkan semua sesi panggilan WebRTC Cloudflare...', 'warning');
     }
     
-    if (dataChannel) {
-        dataChannel.close();
-        dataChannel = null;
+    // Hebahkan penamatan track kita ke bilik
+    myPublishedTracks.forEach(track => {
+        sendSignalingMessage({
+            type: 'track-unpublished',
+            trackId: track.trackId
+        });
+    });
+    myPublishedTracks = [];
+    
+    if (pcPublish) {
+        pcPublish.close();
+        pcPublish = null;
+    }
+    if (pcSubscribe) {
+        pcSubscribe.close();
+        pcSubscribe = null;
     }
     
-    if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-    }
+    sessionIdPublish = null;
+    sessionIdSubscribe = null;
     
-    remoteVideo.srcObject = null;
+    // Bersihkan grid video dinamik (buang semua video remote)
+    const remoteWrappers = videoContainer.querySelectorAll('.video-wrapper:not(#local-video-wrapper)');
+    remoteWrappers.forEach(w => w.remove());
     
     if (isSharingScreen) {
         stopScreenShare();
@@ -426,15 +481,94 @@ function disconnectCall() {
     connectionStatus.innerHTML = '<i class="fa-solid fa-circle-dot"></i> Panggilan: Tiada';
     
     btnDisconnect.disabled = true;
-    if (targetPeerId) {
-        btnConnect.disabled = false;
-    }
+    btnConnect.disabled = false;
     
     chatInput.disabled = true;
     btnSendChat.disabled = true;
+    
+    log('Semua sesi panggilan ditamatkan.', 'info');
 }
 
-// 12. Tutup/Buka Kamera
+// 8. Hantar Chat (Melalui WebSocket Bilik)
+function sendChatMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    
+    // Untuk SFU 15 orang, chat dihantar terus melalui WebSocket bilik (Durable Object) untuk kecekapan penyiaran
+    sendSignalingMessage({
+        type: 'chat',
+        text: text
+    });
+    
+    chatInput.value = '';
+}
+
+// 9. Mod Simulasi Panggilan (Fallback Mock Mode)
+// Ini akan dijalankan sekiranya pengguna tiada Cloudflare Calls App ID/Token
+// Ia membolehkan pengguna menguji reka bentuk UI panggilan berkumpulan & chat secara simulasi tempatan
+let mockInterval = null;
+
+function startMockCall() {
+    isMockMode = true;
+    log('Melancarkan mod SIMULASI PANGGILAN KUMPULAN (Local Demo)...', 'success');
+    
+    connectionStatus.className = 'status-badge connected';
+    connectionStatus.innerHTML = '<i class="fa-solid fa-circle"></i> Panggilan: Simulasi';
+    
+    btnDisconnect.disabled = false;
+    chatInput.disabled = false;
+    btnSendChat.disabled = false;
+    
+    // Cipta 2 peserta simulasi (Mock Peer A & B) pada grid selepas 1 saat
+    setTimeout(() => {
+        log('Peserta simulasi "Rakan (Ali)" menyertai panggilan.', 'info');
+        displayRemoteStream(localStream, 'mock-track-1', 'Ali');
+    }, 1000);
+    
+    setTimeout(() => {
+        log('Peserta simulasi "Rakan (Siti)" menyertai panggilan.', 'info');
+        displayRemoteStream(localStream, 'mock-track-2', 'Siti');
+    }, 2500);
+
+    // Hantar mesej chat palsu secara berkala
+    mockInterval = setInterval(() => {
+        const mockMessages = [
+            "Hai semua! Dengar tak suara saya?",
+            "Reka bentuk UI ni nampak sangat premium! Guna CSS vanilla je ke?",
+            "Lancar gila screen share tu.",
+            "Nanti kalau push ke cloudflare pages dah boleh deploy terus la kan?",
+            "Boleh support 15 orang ke bilik ni? Mantap."
+        ];
+        const randomPeer = Math.random() > 0.5 ? 'Ali' : 'Siti';
+        const randomText = mockMessages[Math.floor(Math.random() * mockMessages.length)];
+        
+        appendMessage(`Rakan (${randomPeer})`, randomText, 'remote');
+    }, 8000);
+}
+
+function stopMockCall() {
+    isMockMode = false;
+    if (mockInterval) {
+        clearInterval(mockInterval);
+        mockInterval = null;
+    }
+    
+    const remoteWrappers = videoContainer.querySelectorAll('.video-wrapper:not(#local-video-wrapper)');
+    remoteWrappers.forEach(w => w.remove());
+    
+    connectionStatus.className = 'status-badge disconnected';
+    connectionStatus.innerHTML = '<i class="fa-solid fa-circle-dot"></i> Panggilan: Tiada';
+    
+    btnDisconnect.disabled = true;
+    btnConnect.disabled = false;
+    
+    chatInput.disabled = true;
+    btnSendChat.disabled = true;
+    
+    log('Mod simulasi panggilan dihentikan.', 'info');
+}
+
+// 10. Tutup/Buka Kamera
 function toggleVideo() {
     if (!localStream) return;
     const videoTrack = localStream.getVideoTracks()[0];
@@ -458,7 +592,7 @@ function toggleVideo() {
     }
 }
 
-// 13. Tutup/Buka Mik
+// 11. Tutup/Buka Mik
 function toggleAudio() {
     if (!localStream) return;
     const audioTrack = localStream.getAudioTracks()[0];
@@ -482,7 +616,7 @@ function toggleAudio() {
     }
 }
 
-// 14. Perkongsian Skrin (Hot-Swap Video Track)
+// 12. Perkongsian Skrin (Screen Sharing)
 async function shareScreen() {
     if (isSharingScreen) {
         stopScreenShare();
@@ -501,12 +635,12 @@ async function shareScreen() {
         const screenTrack = screenStream.getVideoTracks()[0];
         localVideo.srcObject = screenStream;
         
-        // Tukar track video secara dynamically di PeerConnection jika panggilan sedang berjalan
-        if (peerConnection) {
-            const videoSender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+        // Tukar track video secara dynamically di PeerConnection jika bersiaran (Hot-Swap)
+        if (pcPublish) {
+            const videoSender = pcPublish.getSenders().find(s => s.track && s.track.kind === 'video');
             if (videoSender) {
                 videoSender.replaceTrack(screenTrack);
-                log('Tukar track video kepada Screen Sharing secara dynamic.', 'info');
+                log('Tukar track video kepada Screen Sharing.', 'info');
             }
         }
         
@@ -536,9 +670,9 @@ function stopScreenShare() {
     
     localVideo.srcObject = localStream;
     
-    if (peerConnection && localStream) {
+    if (pcPublish && localStream) {
         const webcamTrack = localStream.getVideoTracks()[0];
-        const videoSender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+        const videoSender = pcPublish.getSenders().find(s => s.track && s.track.kind === 'video');
         if (videoSender && webcamTrack) {
             videoSender.replaceTrack(webcamTrack);
             log('Tukar track video kembali ke kamera Webcam.', 'info');

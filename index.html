@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Antigravity WebRTC Call</title>
+    <title>Antigravity Multi-Party WebRTC (Cloudflare Calls)</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,14 +18,14 @@
         <aside class="sidebar">
             <div class="brand">
                 <i class="fa-solid fa-circle-nodes brand-icon"></i>
-                <h2>WebRTC Call</h2>
+                <h2>WebRTC SFU Group</h2>
             </div>
             
             <!-- Room Setup Card -->
             <div class="card room-card">
                 <h3><i class="fa-solid fa-door-open"></i> Tetapan Bilik</h3>
                 <div class="room-input-group">
-                    <input type="text" id="input-room-id" placeholder="Contoh: bilik-123">
+                    <input type="text" id="input-room-id" placeholder="Contoh: bilik-sfu">
                     <button id="btn-join-room" class="btn btn-primary" disabled>
                         <span>Join</span>
                     </button>
@@ -34,8 +34,8 @@
             </div>
 
             <div class="card info-card">
-                <h3><i class="fa-solid fa-circle-info"></i> WebSocket Signaling</h3>
-                <p>Aplikasi ini bersambung ke **Cloudflare Workers WebSocket Server** untuk membolehkan panggilan video, audio, screen share, dan chat nyata antara peranti/tab berbeza.</p>
+                <h3><i class="fa-solid fa-circle-info"></i> Cloudflare Calls SFU</h3>
+                <p>Projek ini menyalurkan stream video menggunakan **Cloudflare Calls (Selective Forwarding Unit)**. Ia membolehkan sehingga 15+ peserta menyertai panggilan video secara lancar.</p>
             </div>
 
             <div class="card status-card">
@@ -49,7 +49,7 @@
         <!-- Main Content Area -->
         <main class="main-content">
             <header class="main-header">
-                <h1>Ruang Panggilan Video</h1>
+                <h1>Ruang Panggilan Video Berkumpulan</h1>
                 <div class="header-badges">
                     <span class="status-badge disconnected" id="ws-status">
                         <i class="fa-solid fa-circle-nodes"></i> WS: Putus
@@ -60,10 +60,10 @@
                 </div>
             </header>
 
-            <!-- Video Grid -->
-            <div class="video-grid">
-                <!-- Local Video -->
-                <div class="video-wrapper">
+            <!-- Video Grid (Dynamic Container) -->
+            <div class="video-grid" id="video-container">
+                <!-- Local Video (Selalu ada) -->
+                <div class="video-wrapper" id="local-video-wrapper">
                     <video id="local-video" autoplay playsinline muted></video>
                     <div class="video-label">
                         <span class="label-badge"><i class="fa-solid fa-user"></i> Anda (Local)</span>
@@ -74,14 +74,8 @@
                         <span id="screen-indicator" class="indicator disabled"><i class="fa-solid fa-desktop"></i></span>
                     </div>
                 </div>
-
-                <!-- Remote Video -->
-                <div class="video-wrapper">
-                    <video id="remote-video" autoplay playsinline></video>
-                    <div class="video-label">
-                        <span class="label-badge"><i class="fa-solid fa-user-friends"></i> Rakan (Remote)</span>
-                    </div>
-                </div>
+                
+                <!-- Video-wrapper peserta lain akan dicipta dan dimasukkan di sini secara dinamik -->
             </div>
 
             <!-- Controls Panel -->
@@ -99,11 +93,11 @@
                     <i class="fa-solid fa-desktop"></i> <span>Share Screen</span>
                 </button>
                 <div class="divider"></div>
-                <button id="btn-connect" class="btn btn-success" disabled title="Hubungkan Panggilan">
-                    <i class="fa-solid fa-phone"></i> <span>Call Peer</span>
+                <button id="btn-connect" class="btn btn-success" disabled title="Siarkan Video Anda ke Bilik">
+                    <i class="fa-solid fa-tower-broadcast"></i> <span>Publish Video</span>
                 </button>
-                <button id="btn-disconnect" class="btn btn-danger" disabled title="Tamatkan Panggilan">
-                    <i class="fa-solid fa-phone-slash"></i> <span>Tamat</span>
+                <button id="btn-disconnect" class="btn btn-danger" disabled title="Tamatkan Siaran Video Anda">
+                    <i class="fa-solid fa-phone-slash"></i> <span>Unpublish</span>
                 </button>
             </div>
         </main>
@@ -116,7 +110,7 @@
             
             <div id="chat-messages" class="chat-messages">
                 <div class="chat-system-message">
-                    Sertai bilik dan sambungkan panggilan untuk mengaktifkan chat.
+                    Sertai bilik dan mulakan siaran video untuk mengaktifkan chat.
                 </div>
             </div>
 

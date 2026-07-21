@@ -1,10 +1,11 @@
-// Cloudflare Worker & Durable Object Signaling Server
+// Cloudflare Worker & Durable Object Signaling Server (Fasa 2 - Cloudflare Calls SFU)
 
-// 1. Durable Object Class to manage room-level connections
+// 1. Durable Object Class to manage room-level active tracks and connections
 export class SignalingRoom {
   constructor(state, env) {
     this.state = state;
     this.env = env;
+    this.tracks = new Map(); // Simpan tracks aktif: trackId -> { peerId, label }
   }
 
   async fetch(request) {
@@ -15,42 +16,22 @@ export class SignalingRoom {
       return new Response("Ralat: Parameter 'peerId' diperlukan.", { status: 400 });
     }
 
-    // Periksa jika permintaan adalah WebSocket Upgrade
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Ralat: Dapatkan sambungan WebSocket sahaja.", { status: 426 });
     }
 
-    // Cipta WebSocket Pair
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
 
-    // Terima WebSocket menggunakan Hibernation API
     this.state.acceptWebSocket(server);
-    
-    // Simpan peerId ke dalam attachment WebSocket
     server.serializeAttachment({ peerId });
 
-    // Dapatkan senarai peer yang sedia ada di dalam bilik untuk memberitahu peer yang baru masuk
-    const existingPeers = [];
-    this.state.getWebSockets().forEach(ws => {
-      const attachment = ws.deserializeAttachment();
-      if (attachment && attachment.peerId !== peerId) {
-        existingPeers.push(attachment.peerId);
-      }
-    });
-
-    // Beritahu pengguna baru tentang senarai peer sedia ada
+    // Hantar data awal bilik kepada peer baru (termasuk senarai tracks yang sedang aktif)
     server.send(JSON.stringify({
       type: "room-joined",
       peerId: peerId,
-      peers: existingPeers
+      tracks: Array.from(this.tracks.entries()) // Menghantar trackId yang sedia ada
     }));
-
-    // Beritahu peer lain bahawa ada peer baru masuk
-    this.broadcast({
-      type: "peer-joined",
-      peerId: peerId
-    }, server);
 
     return new Response(null, {
       status: 101,
@@ -58,94 +39,247 @@ export class SignalingRoom {
     });
   }
 
-  // Dipanggil apabila mesej diterima dari WebSocket
   async webSocketMessage(ws, message) {
     try {
       const data = JSON.parse(message);
       const senderAttachment = ws.deserializeAttachment();
       const senderPeerId = senderAttachment ? senderAttachment.peerId : "Unknown";
 
-      // Tambah ID pengirim ke dalam mesej
       data.sender = senderPeerId;
 
-      if (data.target) {
-        // Hantar isyarat secara spesifik (Offer, Answer, ICE Candidate) kepada target peer
-        const targetSockets = this.state.getWebSockets().filter(client => {
-          const attach = client.deserializeAttachment();
-          return attach && attach.peerId === data.target;
-        });
-
-        targetSockets.forEach(target => {
-          if (target.readyState === 1) { // 1 = WebSocket.OPEN
-            target.send(JSON.stringify(data));
-          }
-        });
-      } else {
-        // Hantar mesej ke seluruh bilik (contohnya Broadcast Chat)
+      if (data.type === "track-published") {
+        // Daftarkan track baru di dalam bilik
+        this.tracks.set(data.trackId, { peerId: senderPeerId, label: data.label });
+        console.log(`Track diterbitkan: ${data.trackId} oleh ${senderPeerId}`);
+        
+        // Hebahkan kepada semua orang di dalam bilik
+        this.broadcast(data, ws);
+      } 
+      else if (data.type === "track-unpublished") {
+        // Buang track daripada bilik
+        this.tracks.delete(data.trackId);
+        console.log(`Track dihentikan: ${data.trackId}`);
+        
+        this.broadcast(data, ws);
+      } 
+      else {
+        // Hebahkan mesej lain (contoh: Chat teks)
         this.broadcast(data, ws);
       }
     } catch (error) {
-      console.error("Ralat memproses mesej WebSocket:", error);
+      console.error("Ralat memproses mesej WebSocket di DO:", error);
     }
   }
 
-  // Dipanggil apabila WebSocket ditutup
   async webSocketClose(ws, code, reason, wasClean) {
-    const attachment = ws.deserializeAttachment();
-    if (attachment) {
-      this.broadcast({
-        type: "peer-left",
-        peerId: attachment.peerId
-      }, ws);
-    }
+    this.handleDisconnect(ws);
     ws.close(code, "Sambungan ditutup");
   }
 
-  // Dipanggil jika ralat WebSocket berlaku
   async webSocketError(ws, error) {
-    const attachment = ws.deserializeAttachment();
-    if (attachment) {
-      this.broadcast({
-        type: "peer-left",
-        peerId: attachment.peerId
-      }, ws);
-    }
-    ws.close(1011, "Ralat WebSocket berlaku");
+    this.handleDisconnect(ws);
+    ws.close(1011, "Ralat sambungan");
   }
 
-  // Fungsi utiliti untuk hantar mesej ke semua WebSocket dalam bilik
+  // Membersihkan tracks bagi peer yang telah terputus sambungan
+  handleDisconnect(ws) {
+    const attachment = ws.deserializeAttachment();
+    if (attachment) {
+      const peerId = attachment.peerId;
+      const deletedTracks = [];
+
+      this.tracks.forEach((info, trackId) => {
+        if (info.peerId === peerId) {
+          deletedTracks.push(trackId);
+          this.tracks.delete(trackId);
+        }
+      });
+
+      console.log(`Peer keluar: ${peerId}. Memadam ${deletedTracks.length} tracks.`);
+
+      // Maklumkan kepada peer lain tentang pemergian peer ini dan tracks yang dipadam
+      this.broadcast({
+        type: "peer-left",
+        peerId: peerId,
+        deletedTracks: deletedTracks
+      }, ws);
+    }
+  }
+
   broadcast(messageObj, excludeWs) {
     const messageString = JSON.stringify(messageObj);
     this.state.getWebSockets().forEach(client => {
-      if (client !== excludeWs && client.readyState === 1) { // 1 = WebSocket.OPEN
+      if (client !== excludeWs && client.readyState === 1) {
         client.send(messageString);
       }
     });
   }
 }
 
-// 2. Main Entry Point (Router)
+// 2. Main Entry Point (Router dengan Proxy API Cloudflare Calls)
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // Route format: /room/<roomId>
-    const roomMatch = path.match(/^\/room\/([^\/]+)/);
-    if (!roomMatch) {
-      return new Response("WebRTC Signaling Server sedang berjalan! Sambung ke /room/<roomId> menggunakan WebSocket.", {
-        status: 200,
-        headers: { "Content-Type": "text/plain; charset=utf-8" }
+    // Sediakan CORS headers untuk membolehkan frontend (port 8080) membuat permintaan
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Content-Type": "application/json"
+    };
+
+    // 2a. Mengendalikan CORS Preflight Options
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders
       });
     }
 
-    const roomId = roomMatch[1];
+    // 2b. Proxy Endpoint: Cipta Sesi Cloudflare Calls Baru
+    // POST /room/<roomId>/calls/session
+    const sessionMatch = path.match(/^\/room\/([^\/]+)\/calls\/session$/);
+    if (sessionMatch && request.method === "POST") {
+      return handleCallsSession(request, env, corsHeaders);
+    }
 
-    // Cipta ID Durable Object berdasarkan nama bilik (roomId)
-    const doId = env.SIGNALING_ROOM.idFromName(roomId);
-    const doStub = env.SIGNALING_ROOM.get(doId);
+    // 2c. Proxy Endpoint: Tambah/Langgan Track Media
+    // POST /room/<roomId>/calls/sessions/<sessionId>/tracks
+    const tracksMatch = path.match(/^\/room\/([^\/]+)\/calls\/sessions\/([^\/]+)\/tracks$/);
+    if (tracksMatch && request.method === "POST") {
+      const sessionId = tracksMatch[2];
+      return handleCallsTracks(request, env, sessionId, corsHeaders);
+    }
 
-    // Hantar permintaan terus kepada Durable Object
-    return doStub.fetch(request);
+    // 2d. Proxy Endpoint: Renegotiate Session
+    // PUT /room/<roomId>/calls/sessions/<sessionId>/renegotiate
+    const renegotiateMatch = path.match(/^\/room\/([^\/]+)\/calls\/sessions\/([^\/]+)\/renegotiate$/);
+    if (renegotiateMatch && request.method === "PUT") {
+      const sessionId = renegotiateMatch[2];
+      return handleCallsRenegotiate(request, env, sessionId, corsHeaders);
+    }
+
+    // 2e. Standard WebSocket: /room/<roomId>
+    const roomMatch = path.match(/^\/room\/([^\/]+)$/);
+    if (roomMatch) {
+      const roomId = roomMatch[1];
+      const doId = env.SIGNALING_ROOM.idFromName(roomId);
+      const doStub = env.SIGNALING_ROOM.get(doId);
+      return doStub.fetch(request);
+    }
+
+    return new Response("Not Found", { status: 404, headers: corsHeaders });
   }
 };
+
+// Pengendali API: Cipta Sesi Panggilan Baru di Cloudflare
+async function handleCallsSession(request, env, corsHeaders) {
+  const appId = env.CALLS_APP_ID;
+  const appToken = env.CALLS_APP_TOKEN;
+
+  // Jika tiada kredential yang sah, kembalikan ralat mesra untuk demo tempatan
+  if (!appId || appId === "YOUR_CALLS_APP_ID" || !appToken) {
+    return new Response(JSON.stringify({
+      error: "CREDENTIALS_MISSING",
+      message: "Sila tetapkan CALLS_APP_ID di wrangler.toml dan CALLS_APP_TOKEN di dalam .dev.vars untuk memulakan panggilan Cloudflare Calls."
+    }), { status: 400, headers: corsHeaders });
+  }
+
+  try {
+    const requestBody = await request.json(); // contains { sessionDescription: { type: "offer", sdp: "..." } }
+    
+    const cfResponse = await fetch(`https://rtc.live.cloudflare.com/v1/apps/${appId}/sessions/new`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${appToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const responseText = await cfResponse.text();
+    return new Response(responseText, {
+      status: cfResponse.status,
+      headers: corsHeaders
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: "INTERNAL_ERROR", message: error.message }), {
+      status: 500,
+      headers: corsHeaders
+    });
+  }
+}
+
+// Pengendali API: Hantar/Langgan Track Media di Cloudflare
+async function handleCallsTracks(request, env, sessionId, corsHeaders) {
+  const appId = env.CALLS_APP_ID;
+  const appToken = env.CALLS_APP_TOKEN;
+
+  if (!appId || appId === "YOUR_CALLS_APP_ID" || !appToken) {
+    return new Response(JSON.stringify({
+      error: "CREDENTIALS_MISSING"
+    }), { status: 400, headers: corsHeaders });
+  }
+
+  try {
+    const requestBody = await request.json(); // contains { tracks: [...], sessionDescription: ... }
+
+    const cfResponse = await fetch(`https://rtc.live.cloudflare.com/v1/apps/${appId}/sessions/${sessionId}/tracks/new`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${appToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const responseText = await cfResponse.text();
+    return new Response(responseText, {
+      status: cfResponse.status,
+      headers: corsHeaders
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: "INTERNAL_ERROR", message: error.message }), {
+      status: 500,
+      headers: corsHeaders
+    });
+  }
+}
+
+// Pengendali API: Renegotiate Sesi (untuk bertukar SDP Answer kembali ke Cloudflare)
+async function handleCallsRenegotiate(request, env, sessionId, corsHeaders) {
+  const appId = env.CALLS_APP_ID;
+  const appToken = env.CALLS_APP_TOKEN;
+
+  if (!appId || appId === "YOUR_CALLS_APP_ID" || !appToken) {
+    return new Response(JSON.stringify({
+      error: "CREDENTIALS_MISSING"
+    }), { status: 400, headers: corsHeaders });
+  }
+
+  try {
+    const requestBody = await request.json(); // contains { sessionDescription: { type: "answer", sdp: "..." } }
+
+    const cfResponse = await fetch(`https://rtc.live.cloudflare.com/v1/apps/${appId}/sessions/${sessionId}/renegotiate`, {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${appToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const responseText = await cfResponse.text();
+    return new Response(responseText, {
+      status: cfResponse.status,
+      headers: corsHeaders
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: "INTERNAL_ERROR", message: error.message }), {
+      status: 500,
+      headers: corsHeaders
+    });
+  }
+}
