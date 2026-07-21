@@ -223,7 +223,8 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.25rem;
     align-content: center;
-    padding-bottom: 80px; /* Space for the floating controls bar */
+    padding-bottom: 20px; /* Small padding, controls float directly on top */
+    min-height: 0; /* CRITICAL FLEXBOX BUG FIX: Prevent grid from growing out of parent */
 }
 
 .video-wrapper {
@@ -238,7 +239,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    max-height: calc(100vh - 200px); /* Strictly constrain layout height on all devices */
+    max-height: calc(100vh - 120px); /* Strictly constrain layout height, maximizing space */
     max-width: 100%;
 }
 
