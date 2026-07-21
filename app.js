@@ -6,6 +6,7 @@ const btnStartMedia = document.getElementById('btn-start-media');
 const btnToggleVideo = document.getElementById('btn-toggle-video');
 const btnToggleAudio = document.getElementById('btn-toggle-audio');
 const btnShareScreen = document.getElementById('btn-share-screen');
+const btnToggleChat = document.getElementById('btn-toggle-chat');
 const btnConnect = document.getElementById('btn-connect');
 const btnDisconnect = document.getElementById('btn-disconnect');
 
@@ -731,6 +732,14 @@ btnStartMedia.addEventListener('click', startMedia);
 btnToggleVideo.addEventListener('click', toggleVideo);
 btnToggleAudio.addEventListener('click', toggleAudio);
 btnShareScreen.addEventListener('click', shareScreen);
+btnToggleChat.addEventListener('click', () => {
+    const appContainer = document.querySelector('.app-container');
+    if (appContainer) {
+        const isClosed = appContainer.classList.toggle('chat-closed');
+        btnToggleChat.classList.toggle('active', !isClosed);
+        log(isClosed ? 'Panel sembang ditutup.' : 'Panel sembang dibuka.', 'system');
+    }
+});
 btnJoinRoom.addEventListener('click', joinRoom);
 btnConnect.addEventListener('click', connectCall);
 btnDisconnect.addEventListener('click', disconnectCall);
