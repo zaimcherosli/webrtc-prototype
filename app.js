@@ -49,12 +49,14 @@ let sessionIdSubscribe = null;
 let timerInterval = null; // Pemasa mesyuarat
 let activePeers = new Set(); // Set untuk menjejaki ID peserta aktif di dalam bilik
 
-// Track mappings
+// Track mappings & WebRTC P2P State
 let myPublishedTracks = []; // [{ trackId, label }]
 let isVideoMuted = false;
 let isAudioMuted = false;
 let isSharingScreen = false;
-let isMockMode = false; // Set to true if Cloudflare Calls credentials are missing
+let isMockMode = false;
+let isP2PMode = false;
+const p2pConnections = new Map(); // targetPeerId -> RTCPeerConnection
 
 // Display Generated Peer ID
 peerIdDisplay.textContent = `Your ID: ${myPeerId}`;
@@ -270,26 +272,59 @@ async function handleSignalingMessage(data) {
             log(`Peserta baru menyertai bilik: ${data.peerId}`, 'info');
             activePeers.add(data.peerId);
             updateParticipantCount();
+            if (isP2PMode || sessionIdPublish) {
+                initiateP2POffer(data.peerId);
+            }
+            break;
+
+        case 'p2p-ready':
+            if (data.sender && data.sender !== myPeerId) {
+                log(`Peranti ${data.sender} sedia untuk sambungan P2P.`, 'info');
+                activePeers.add(data.sender);
+                updateParticipantCount();
+                initiateP2POffer(data.sender);
+            }
+            break;
+
+        case 'p2p-offer':
+            if (data.target === myPeerId && data.sender) {
+                await handleP2POffer(data.sender, data.offer);
+            }
+            break;
+
+        case 'p2p-answer':
+            if (data.target === myPeerId && data.sender) {
+                await handleP2PAnswer(data.sender, data.answer);
+            }
+            break;
+
+        case 'p2p-ice':
+            if (data.target === myPeerId && data.sender) {
+                await handleP2PIce(data.sender, data.candidate);
+            }
             break;
             
         case 'peer-left':
-            log(`Peserta ${data.peerId} meninggalkan bilik panggilan.`, 'warning');
+            log(`Peserta ${data.peerId} melepaskan sambungan...`, 'warning');
             activePeers.delete(data.peerId);
             updateParticipantCount();
+            
+            if (p2pConnections.has(data.peerId)) {
+                p2pConnections.get(data.peerId).close();
+                p2pConnections.delete(data.peerId);
+            }
             
             if (data.deletedTracks) {
                 data.deletedTracks.forEach(trackId => {
                     removeVideoTrackElement(trackId, data.peerId);
                 });
             }
-            // Bersihkan wrapper video kosong jika ada
             const wrapper = document.getElementById(`video-${data.peerId}`);
             if (wrapper) wrapper.remove();
             break;
 
         case 'chat':
             const isChatClosed = document.querySelector('.app-container').classList.contains('chat-closed');
-            // Hanya tunjukkan popup sembang jika chat ditutup DAN pengguna TIDAK sedang berkongsi skrin (elak gangguan pembentang)
             if (isChatClosed && !isSharingScreen) {
                 showChatToast(data.sender, data.text);
             }
@@ -349,8 +384,8 @@ async function connectCall() {
             });
         } catch (apiError) {
             if (apiError.message.includes('CREDENTIALS_MISSING')) {
-                log('Kredensial Cloudflare Calls tiada! Beralih ke SIMULASI MOCK bilik panggilan...', 'warning');
-                startMockCall();
+                log('Kredensial SFU tiada. Memulakan Panggilan WebRTC P2P Direct antara peranti...', 'info');
+                startP2PCall();
                 return;
             }
             throw apiError;
@@ -543,9 +578,15 @@ function disconnectCall() {
         return;
     }
 
-    if (pcPublish || pcSubscribe) {
-        log('Menamatkan semua sesi panggilan WebRTC Cloudflare...', 'warning');
-    }
+    log('Menamatkan sesi panggilan...', 'warning');
+
+    // Tutup semua sambungan WebRTC P2P
+    p2pConnections.forEach((pc, peerId) => {
+        pc.close();
+        removeVideoTrackElement(null, peerId);
+    });
+    p2pConnections.clear();
+    isP2PMode = false;
     
     // Hebahkan penamatan track kita ke bilik
     myPublishedTracks.forEach(track => {
@@ -680,14 +721,14 @@ function updateParticipantCount() {
 // Ia membolehkan pengguna menguji reka bentuk UI panggilan berkumpulan & chat secara simulasi tempatan
 let mockInterval = null;
 
-function startMockCall() {
-    isMockMode = true;
-    log('Melancarkan mod SIMULASI PANGGILAN KUMPULAN (Local Demo)...', 'success');
+// 9. Mod WebRTC P2P Direct (Real Multi-Device Connection)
+function startP2PCall() {
+    isP2PMode = true;
+    log('Melancarkan Panggilan WebRTC P2P Direct antara peranti...', 'success');
     
     connectionStatus.className = 'status-badge connected';
-    connectionStatus.innerHTML = '<i class="fa-solid fa-circle"></i> Panggilan: Simulasi';
+    connectionStatus.innerHTML = '<i class="fa-solid fa-circle"></i> Panggilan: Direct P2P';
     
-    // Tukar butang kepada butang Unpublish semasa simulasi
     btnConnect.disabled = false;
     btnConnect.className = 'btn btn-danger';
     btnConnect.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
@@ -696,42 +737,146 @@ function startMockCall() {
     chatInput.disabled = false;
     btnSendChat.disabled = false;
     
-    // Cipta 2 peserta simulasi (Mock Peer A & B) pada grid selepas 1 saat
-    setTimeout(() => {
-        log('Peserta simulasi "Rakan (Ali)" menyertai panggilan.', 'info');
-        activePeers.add('Ali');
-        updateParticipantCount();
-        displayRemoteStream(localStream, 'mock-track-1', 'Ali');
-    }, 1000);
-    
-    setTimeout(() => {
-        log('Peserta simulasi "Rakan (Siti)" menyertai panggilan.', 'info');
-        activePeers.add('Siti');
-        updateParticipantCount();
-        displayRemoteStream(localStream, 'mock-track-2', 'Siti');
-    }, 2500);
-
-    // Hantar mesej chat palsu secara berkala
-    mockInterval = setInterval(() => {
-        const mockMessages = [
-            "Hai semua! Dengar tak suara saya?",
-            "Reka bentuk UI ni nampak sangat premium! Guna CSS vanilla je ke?",
-            "Lancar gila screen share tu.",
-            "Nanti kalau push ke cloudflare pages dah boleh deploy terus la kan?",
-            "Boleh support 15 orang ke bilik ni? Mantap."
-        ];
-        const randomPeer = Math.random() > 0.5 ? 'Ali' : 'Siti';
-        const randomText = mockMessages[Math.floor(Math.random() * mockMessages.length)];
-        
-        const isChatClosed = document.querySelector('.app-container').classList.contains('chat-closed');
-        // Hanya tunjukkan popup sembang jika chat ditutup DAN pengguna TIDAK sedang berkongsi skrin (elak gangguan pembentang)
-        if (isChatClosed && !isSharingScreen) {
-            showChatToast(`Rakan (${randomPeer})`, randomText);
-        }
-        appendMessage(`Rakan (${randomPeer})`, randomText, 'remote');
-    }, 8000);
-    
     startMeetingTimer();
+    
+    // Hebahkan ke bilik bahawa kita sedia membuat sambungan P2P
+    sendSignalingMessage({
+        type: 'p2p-ready',
+        sender: myPeerId
+    });
+    
+    // Jalankan P2P offer kepada semua peranti yang sudah sedia di dalam bilik
+    activePeers.forEach(peerId => {
+        if (peerId !== myPeerId) {
+            initiateP2POffer(peerId);
+        }
+    });
+}
+
+async function initiateP2POffer(targetPeerId) {
+    if (!targetPeerId || targetPeerId === myPeerId || p2pConnections.has(targetPeerId)) return;
+    
+    log(`Memulakan sambungan WebRTC P2P terus ke ${targetPeerId}...`, 'info');
+    
+    const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+    
+    p2pConnections.set(targetPeerId, pc);
+    
+    const activeStream = isSharingScreen ? screenStream : localStream;
+    if (activeStream) {
+        activeStream.getTracks().forEach(track => {
+            pc.addTrack(track, activeStream);
+        });
+    }
+    
+    pc.ontrack = (event) => {
+        log(`Aliran video/audio P2P diterima daripada ${targetPeerId}!`, 'success');
+        displayRemoteStream(event.streams[0], event.track.id, targetPeerId);
+    };
+    
+    pc.onicecandidate = (event) => {
+        if (event.candidate) {
+            sendSignalingMessage({
+                type: 'p2p-ice',
+                target: targetPeerId,
+                sender: myPeerId,
+                candidate: event.candidate
+            });
+        }
+    };
+    
+    try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        
+        sendSignalingMessage({
+            type: 'p2p-offer',
+            target: targetPeerId,
+            sender: myPeerId,
+            offer: offer
+        });
+    } catch (err) {
+        log(`Ralat cipta Offer P2P ke ${targetPeerId}: ${err.message}`, 'error');
+    }
+}
+
+async function handleP2POffer(sender, offer) {
+    if (!sender || sender === myPeerId) return;
+    log(`Menerima Offer P2P daripada ${sender}...`, 'info');
+    
+    activePeers.add(sender);
+    updateParticipantCount();
+    
+    let pc = p2pConnections.get(sender);
+    if (pc) {
+        pc.close();
+    }
+    
+    pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+    p2pConnections.set(sender, pc);
+    
+    const activeStream = isSharingScreen ? screenStream : localStream;
+    if (activeStream) {
+        activeStream.getTracks().forEach(track => {
+            pc.addTrack(track, activeStream);
+        });
+    }
+    
+    pc.ontrack = (event) => {
+        log(`Aliran video/audio P2P diterima daripada ${sender}!`, 'success');
+        displayRemoteStream(event.streams[0], event.track.id, sender);
+    };
+    
+    pc.onicecandidate = (event) => {
+        if (event.candidate) {
+            sendSignalingMessage({
+                type: 'p2p-ice',
+                target: sender,
+                sender: myPeerId,
+                candidate: event.candidate
+            });
+        }
+    };
+    
+    try {
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        
+        sendSignalingMessage({
+            type: 'p2p-answer',
+            target: sender,
+            sender: myPeerId,
+            answer: answer
+        });
+    } catch (err) {
+        log(`Ralat proses Offer P2P daripada ${sender}: ${err.message}`, 'error');
+    }
+}
+
+async function handleP2PAnswer(sender, answer) {
+    const pc = p2pConnections.get(sender);
+    if (!pc) return;
+    try {
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        log(`Sambungan P2P dengan ${sender} berjaya didaftarkan!`, 'success');
+    } catch (err) {
+        log(`Ralat tetapkan Answer P2P daripada ${sender}: ${err.message}`, 'error');
+    }
+}
+
+async function handleP2PIce(sender, candidate) {
+    const pc = p2pConnections.get(sender);
+    if (!pc) return;
+    try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (err) {
+        console.error(`Ralat ICE Candidate daripada ${sender}:`, err);
+    }
 }
 
 function stopMockCall() {
