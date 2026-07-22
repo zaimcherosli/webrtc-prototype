@@ -963,6 +963,12 @@ async function shareScreen() {
         return;
     }
     
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        log('Peranti mudah alih (Mobile) tidak menyokong fungsi perkongsian skrin (Screen Share). Sila gunakan pelayar Komputer/Laptop.', 'warning');
+        alert('Peranti mudah alih (Mobile) tidak menyokong fungsi perkongsian skrin (Screen Share). Sila gunakan pelayar Komputer / Laptop.');
+        return;
+    }
+    
     log('Meminta akses untuk perkongsian skrin...', 'info');
     try {
         screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
@@ -991,6 +997,15 @@ async function shareScreen() {
                 log('Tukar track video kepada Screen Sharing.', 'info');
             }
         }
+        
+        // Tukar track video di semua sambungan P2P WebRTC (Hot-Swap untuk P2P Direct ke Mobile/Rakan)
+        p2pConnections.forEach((pc, peerId) => {
+            const videoSender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (videoSender) {
+                videoSender.replaceTrack(screenTrack);
+                log(`Tukar track video ke Screen Sharing untuk rakan P2P: ${peerId}`, 'info');
+            }
+        });
         
         screenTrack.onended = () => {
             log('Perkongsian skrin ditamatkan oleh pengguna.', 'warning');
@@ -1026,13 +1041,24 @@ function stopScreenShare() {
     
     localVideo.srcObject = localStream;
     
-    if (pcPublish && localStream) {
+    if (localStream) {
         const webcamTrack = localStream.getVideoTracks()[0];
-        const videoSender = pcPublish.getSenders().find(s => s.track && s.track.kind === 'video');
-        if (videoSender && webcamTrack) {
-            videoSender.replaceTrack(webcamTrack);
-            log('Tukar track video kembali ke kamera Webcam.', 'info');
+        if (pcPublish) {
+            const videoSender = pcPublish.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (videoSender && webcamTrack) {
+                videoSender.replaceTrack(webcamTrack);
+                log('Tukar track video kembali ke kamera Webcam.', 'info');
+            }
         }
+        
+        // Tukar track video kembali ke kamera Webcam di semua sambungan P2P WebRTC
+        p2pConnections.forEach((pc, peerId) => {
+            const videoSender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (videoSender && webcamTrack) {
+                videoSender.replaceTrack(webcamTrack);
+                log(`Tukar track video kembali ke kamera untuk rakan P2P: ${peerId}`, 'info');
+            }
+        });
     }
     log('Kembali ke kamera asal.', 'info');
 }
