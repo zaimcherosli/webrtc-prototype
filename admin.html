@@ -12,6 +12,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css?v=37">
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             background-color: #080c16;
             color: #fff;
@@ -19,17 +23,23 @@
             margin: 0;
             padding: 0;
             min-height: 100vh;
+        }
+
+        /* Lock Screen Container */
+        .admin-lock-wrapper {
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
         }
 
         .admin-login-card {
             background: #0d121f;
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 20px;
-            padding: 2.5rem;
-            width: 90%;
+            padding: 2.5rem 2rem;
+            width: 100%;
             max-width: 420px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
             text-align: center;
@@ -45,6 +55,7 @@
             color: #94a3b8;
             font-size: 0.9rem;
             margin-bottom: 1.5rem;
+            line-height: 1.4;
         }
 
         .admin-login-form input {
@@ -56,63 +67,285 @@
             color: #fff;
             font-size: 1rem;
             margin-bottom: 1rem;
-            box-sizing: border-box;
         }
 
-        .admin-dashboard-view {
-            width: 100%;
-            max-width: 960px;
-            padding: 2rem 1rem;
+        .admin-login-form input:focus {
+            outline: none;
+            border-color: #3b82f6;
         }
 
+        /* Dashboard Container */
+        .admin-dashboard-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1rem 1.25rem 3rem 1.25rem;
+        }
+
+        /* Sticky Nav Header */
         .admin-top-bar {
+            position: sticky;
+            top: 10px;
+            z-index: 100;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
-            background: #0d121f;
-            padding: 1.25rem 1.5rem;
+            background: rgba(13, 18, 31, 0.92);
+            backdrop-filter: blur(16px);
+            padding: 1rem 1.5rem;
             border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            margin-bottom: 1.5rem;
             flex-wrap: wrap;
             gap: 1rem;
         }
 
         .admin-top-bar h1 {
-            font-size: 1.35rem;
+            font-size: 1.3rem;
             margin: 0;
             color: #fff;
             display: flex;
             align-items: center;
             gap: 0.75rem;
         }
+
+        .admin-top-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        /* Responsive Metric Cards Grid */
+        .admin-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric-card {
+            background: #0d121f;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.2);
+            background: #111728;
+        }
+
+        .metric-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .metric-icon.blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .metric-icon.green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .metric-icon.purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+        .metric-icon.orange { background: rgba(249, 115, 22, 0.2); color: #fb923c; }
+
+        .metric-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .metric-value {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .text-success { color: #34d399 !important; }
+
+        /* Admin Section Card */
+        .admin-section {
+            background: #0d121f;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .admin-section h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin: 0 0 1.25rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        /* Quota Grid */
+        .quota-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .quota-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .quota-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .quota-label strong {
+            color: #f8fafc;
+        }
+
+        .quota-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .quota-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #06b6d4);
+            border-radius: 999px;
+        }
+
+        .quota-progress.purple {
+            background: linear-gradient(90deg, #a855f7, #ec4899);
+        }
+
+        /* Broadcast Form */
+        .admin-broadcast-form {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .admin-broadcast-form input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #fff;
+            font-size: 0.95rem;
+        }
+
+        .admin-broadcast-form input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        /* Table */
+        .admin-table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            min-width: 600px;
+        }
+
+        .admin-table th {
+            text-align: left;
+            padding: 12px 14px;
+            color: #94a3b8;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+
+        .admin-table td {
+            padding: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #e2e8f0;
+        }
+
+        /* Media Queries for Mobile Responsiveness */
+        @media (max-width: 900px) {
+            .admin-metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .admin-top-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 1rem;
+            }
+
+            .admin-top-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .admin-metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .admin-broadcast-form {
+                flex-direction: column;
+            }
+
+            .admin-broadcast-form button {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
 
     <!-- Admin Passcode Lock Screen -->
-    <div id="admin-lock-screen" class="admin-login-card">
-        <i class="fa-solid fa-user-shield" style="font-size: 3rem; color: var(--accent, #3b82f6); margin-bottom: 1rem;"></i>
-        <h2>Portal Pentadbir WebRTC</h2>
-        <p>Sila masukkan Kata Laluan Pentadbir untuk mengakses Dashboard Analitik & Kawalan Sistem.</p>
-        <div class="admin-login-form">
-            <input type="password" id="input-admin-passcode" placeholder="Kata Laluan Pentadbir (cth: admin123)">
-            <button id="btn-login-admin" class="btn btn-primary" style="width: 100%; padding: 12px;"><i class="fa-solid fa-right-to-bracket"></i> Log Masuk Admin</button>
+    <div id="admin-lock-screen" class="admin-lock-wrapper">
+        <div class="admin-login-card">
+            <i class="fa-solid fa-user-shield" style="font-size: 3.2rem; color: #3b82f6; margin-bottom: 1.2rem;"></i>
+            <h2>Portal Pentadbir WebRTC</h2>
+            <p>Masukkan Kata Laluan Pentadbir untuk mengakses Dashboard Analitik & Kawalan Sistem.</p>
+            <div class="admin-login-form">
+                <input type="password" id="input-admin-passcode" placeholder="Kata Laluan Pentadbir (cth: admin123)">
+                <button id="btn-login-admin" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 1rem;"><i class="fa-solid fa-right-to-bracket"></i> Log Masuk Admin</button>
+            </div>
+            <div id="login-error-msg" style="color: #ef4444; font-size: 0.85rem; margin-top: 1rem; display: none;"><i class="fa-solid fa-circle-exclamation"></i> Kata laluan salah! Sila cuba lagi.</div>
         </div>
-        <div id="login-error-msg" style="color: #ef4444; font-size: 0.85rem; margin-top: 1rem; display: none;">Kata laluan salah! Sila cuba lagi.</div>
     </div>
 
     <!-- Admin Dashboard Main View (Hidden by default until passcode unlocked) -->
-    <div id="admin-dashboard-main" class="admin-dashboard-view" style="display: none;">
-        <div class="admin-top-bar">
-            <h1><i class="fa-solid fa-chart-pie" style="color: #3b82f6;"></i> WebRTC Admin Console & Analitik</h1>
-            <div style="display: flex; gap: 0.75rem; align-items: center;">
-                <button id="btn-refresh-admin" class="btn btn-secondary"><i class="fa-solid fa-rotate"></i> Muat Semula</button>
-                <a href="/" class="btn btn-secondary"><i class="fa-solid fa-house"></i> Ke Bilik Utama</a>
+    <div id="admin-dashboard-main" style="display: none;">
+        <div class="admin-dashboard-container">
+            <!-- Sticky Header Nav -->
+            <div class="admin-top-bar">
+                <h1><i class="fa-solid fa-chart-pie" style="color: #3b82f6;"></i> WebRTC Admin Console & Analitik</h1>
+                <div class="admin-top-actions">
+                    <button id="btn-refresh-admin" class="btn btn-secondary"><i class="fa-solid fa-rotate"></i> Muat Semula</button>
+                    <a href="/" class="btn btn-primary"><i class="fa-solid fa-house"></i> Ke Bilik Utama</a>
+                </div>
             </div>
-        </div>
 
-        <div class="admin-body card" style="background: #0d121f; padding: 1.5rem; border-radius: 20px;">
             <!-- Summary Metrics Grid -->
             <div class="admin-metrics-grid">
                 <div class="metric-card">
@@ -146,8 +379,8 @@
             </div>
 
             <!-- Cloudflare Usage Quota Progress Section -->
-            <div class="admin-section card" style="margin-top: 1.5rem;">
-                <h3><i class="fa-solid fa-cloud"></i> Ringkasan Penggunaan Cloudflare (Free Quota)</h3>
+            <div class="admin-section">
+                <h3><i class="fa-solid fa-cloud" style="color: #06b6d4;"></i> Ringkasan Penggunaan Cloudflare (Free Quota)</h3>
                 <div class="quota-grid">
                     <div class="quota-item">
                         <div class="quota-label"><span>Workers Requests (Hari Ini)</span> <strong id="admin-workers-req">1,240 / 100,000</strong></div>
@@ -161,33 +394,33 @@
             </div>
 
             <!-- Broadcast Announcement Action -->
-            <div class="admin-section card" style="margin-top: 1.5rem;">
-                <h3><i class="fa-solid fa-bullhorn"></i> Hantar Pengumuman Admin (Global Broadcast)</h3>
+            <div class="admin-section">
+                <h3><i class="fa-solid fa-bullhorn" style="color: #f59e0b;"></i> Hantar Pengumuman Admin (Global Broadcast)</h3>
                 <div class="admin-broadcast-form">
-                    <input type="text" id="admin-broadcast-input" placeholder="Tulis pengumuman rasmi ke semua bilik...">
-                    <button id="btn-admin-broadcast" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Hantar</button>
+                    <input type="text" id="admin-broadcast-input" placeholder="Tulis pengumuman rasmi ke semua bilik mesyuarat...">
+                    <button id="btn-admin-broadcast" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Hantar Mesej</button>
                 </div>
             </div>
 
             <!-- Live Logs / Active Sessions Table -->
-            <div class="admin-section card" style="margin-top: 1.5rem;">
-                <h3><i class="fa-solid fa-list-check"></i> Senarai Bilik & Peserta Aktif</h3>
+            <div class="admin-section">
+                <h3><i class="fa-solid fa-list-check" style="color: #10b981;"></i> Senarai Bilik & Peserta Aktif</h3>
                 <div id="admin-room-list" class="admin-table-container">
                     <table class="admin-table">
                         <thead>
                             <tr>
                                 <th>ID Bilik</th>
-                                <th>Peserta</th>
-                                <th>Screen Share</th>
-                                <th>Status Websocket</th>
+                                <th>Peserta Terhubung</th>
+                                <th>Mod Panggilan</th>
+                                <th>Status Pelayan</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td><span class="badge-blue">Bilik 1</span></td>
-                                <td>Laptop, Mobile</td>
-                                <td><span class="badge-green">Aktif</span></td>
-                                <td><span class="badge-success">Bersambung</span></td>
+                                <td id="admin-room-peers-list">Laptop (Anda), Mobile Peer</td>
+                                <td><span class="badge-green">WebRTC P2P Direct</span></td>
+                                <td><span class="badge-success">● Active</span></td>
                             </tr>
                         </tbody>
                     </table>
@@ -256,7 +489,7 @@
                         body: JSON.stringify({ text })
                     });
                     if (res.ok) {
-                        alert('📢 Pengumuman Pentadbir berjaya disebarkan!');
+                        alert('📢 Pengumuman Pentadbir berjaya disebarkan ke semua peranti!');
                         inputBroadcast.value = '';
                     }
                 } catch (e) {
