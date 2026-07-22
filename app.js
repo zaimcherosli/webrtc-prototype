@@ -69,10 +69,22 @@ function log(message, type = 'system') {
     console.log(`[${type.toUpperCase()}] ${message}`);
 }
 
+// Helper pengesanan hos pelayan isyarat (Signaling Server)
+function getSignalingHost() {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return `${hostname}:8787`;
+    }
+    // Jika frontend dinaikkan di bawah domain webrtc-prototype, hubungkan ke worker backend webrtc-signaling
+    if (hostname.startsWith('webrtc-prototype.')) {
+        return hostname.replace('webrtc-prototype.', 'webrtc-signaling.');
+    }
+    return hostname;
+}
+
 // Helper to make API calls to backend proxy
 async function apiRequest(endpoint, method, body = null) {
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const apiHost = isLocalhost ? `${window.location.hostname}:8787` : window.location.hostname;
+    const apiHost = getSignalingHost();
     const apiProtocol = window.location.protocol; // Menggunakan https atau http mengikut persekitaran semasa
     
     const response = await fetch(`${apiProtocol}//${apiHost}/room/${currentRoomId}/calls/${endpoint}`, {
@@ -145,8 +157,7 @@ function joinRoom() {
     log(`Menyambung ke bilik: ${roomId}...`, 'info');
     
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const wsHost = isLocalhost ? `${window.location.hostname}:8787` : window.location.hostname;
+    const wsHost = getSignalingHost();
     const wsUrl = `${protocol}//${wsHost}/room/${roomId}?peerId=${myPeerId}`;
     
     try {

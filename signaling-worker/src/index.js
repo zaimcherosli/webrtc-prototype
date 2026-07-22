@@ -179,6 +179,10 @@ export default {
       return doStub.fetch(request);
     }
 
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+
     return new Response("Not Found", { status: 404, headers: corsHeaders });
   }
 };
