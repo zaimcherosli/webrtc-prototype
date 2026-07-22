@@ -323,6 +323,24 @@ async function handleSignalingMessage(data) {
             if (wrapper) wrapper.remove();
             break;
 
+        case 'screen-share-status':
+            if (data.sender && data.sender !== myPeerId) {
+                const remoteWrapper = document.getElementById(`video-${data.sender}`);
+                if (remoteWrapper) {
+                    const badge = remoteWrapper.querySelector('.label-badge');
+                    if (data.isSharing) {
+                        remoteWrapper.classList.add('remote-sharing-screen');
+                        if (badge) badge.innerHTML = `<i class="fa-solid fa-desktop"></i> Rakan (${data.sender}) - Perkongsian Skrin`;
+                        log(`Peserta ${data.sender} mula berkongsi skrin.`, 'info');
+                    } else {
+                        remoteWrapper.classList.remove('remote-sharing-screen');
+                        if (badge) badge.innerHTML = `<i class="fa-solid fa-user-friends"></i> Rakan (${data.sender})`;
+                        log(`Peserta ${data.sender} menamatkan perkongsian skrin.`, 'info');
+                    }
+                }
+            }
+            break;
+
         case 'chat':
             const isChatClosed = document.querySelector('.app-container').classList.contains('chat-closed');
             if (isChatClosed && !isSharingScreen) {
@@ -558,7 +576,11 @@ function displayRemoteStream(stream, trackId, peerId) {
     const videoElement = document.getElementById(`video-el-${peerId}`);
     if (videoElement) {
         videoElement.srcObject = stream;
-        videoElement.play().catch(e => console.error("Video play fail:", e));
+        videoElement.muted = false;
+        videoElement.volume = 1.0;
+        videoElement.play().catch(e => {
+            console.warn("Autoplay audio/video blocked by browser, user interaction required:", e);
+        });
     }
 }
 
@@ -764,11 +786,14 @@ async function initiateP2POffer(targetPeerId) {
     
     p2pConnections.set(targetPeerId, pc);
     
-    const activeStream = isSharingScreen ? screenStream : localStream;
-    if (activeStream) {
-        activeStream.getTracks().forEach(track => {
-            pc.addTrack(track, activeStream);
+    if (localStream) {
+        localStream.getAudioTracks().forEach(track => {
+            pc.addTrack(track, localStream);
         });
+    }
+    const videoTrack = isSharingScreen && screenStream ? screenStream.getVideoTracks()[0] : (localStream ? localStream.getVideoTracks()[0] : null);
+    if (videoTrack) {
+        pc.addTrack(videoTrack, isSharingScreen ? screenStream : localStream);
     }
     
     pc.ontrack = (event) => {
@@ -819,11 +844,14 @@ async function handleP2POffer(sender, offer) {
     });
     p2pConnections.set(sender, pc);
     
-    const activeStream = isSharingScreen ? screenStream : localStream;
-    if (activeStream) {
-        activeStream.getTracks().forEach(track => {
-            pc.addTrack(track, activeStream);
+    if (localStream) {
+        localStream.getAudioTracks().forEach(track => {
+            pc.addTrack(track, localStream);
         });
+    }
+    const videoTrack = isSharingScreen && screenStream ? screenStream.getVideoTracks()[0] : (localStream ? localStream.getVideoTracks()[0] : null);
+    if (videoTrack) {
+        pc.addTrack(videoTrack, isSharingScreen ? screenStream : localStream);
     }
     
     pc.ontrack = (event) => {
@@ -1006,6 +1034,12 @@ async function shareScreen() {
                 log(`Tukar track video ke Screen Sharing untuk rakan P2P: ${peerId}`, 'info');
             }
         });
+
+        sendSignalingMessage({
+            type: 'screen-share-status',
+            isSharing: true,
+            sender: myPeerId
+        });
         
         screenTrack.onended = () => {
             log('Perkongsian skrin ditamatkan oleh pengguna.', 'warning');
@@ -1060,6 +1094,13 @@ function stopScreenShare() {
             }
         });
     }
+
+    sendSignalingMessage({
+        type: 'screen-share-status',
+        isSharing: false,
+        sender: myPeerId
+    });
+
     log('Kembali ke kamera asal.', 'info');
 }
 
@@ -1116,8 +1157,8 @@ inputDisplayName.addEventListener('input', () => {
     }
 });
 btnConnect.addEventListener('click', () => {
-    // Bertindak sebagai butang toggle siaran (Publish/Unpublish)
-    if (sessionIdPublish || isMockMode) {
+    // Bertindak sebagai butang toggle siaran / Tamatkan Panggilan (Publish/Unpublish/End P2P)
+    if (sessionIdPublish || isMockMode || isP2PMode) {
         if (isMockMode) {
             stopMockCall();
         } else {
