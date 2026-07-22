@@ -330,10 +330,14 @@ async function handleSignalingMessage(data) {
                     const badge = remoteWrapper.querySelector('.label-badge');
                     if (data.isSharing) {
                         remoteWrapper.classList.add('remote-sharing-screen');
+                        videoContainer.classList.add('screen-sharing-active');
                         if (badge) badge.innerHTML = `<i class="fa-solid fa-desktop"></i> Rakan (${data.sender}) - Perkongsian Skrin`;
                         log(`Peserta ${data.sender} mula berkongsi skrin.`, 'info');
                     } else {
                         remoteWrapper.classList.remove('remote-sharing-screen');
+                        if (videoContainer.querySelectorAll('.sharing-screen, .remote-sharing-screen').length === 0) {
+                            videoContainer.classList.remove('screen-sharing-active');
+                        }
                         if (badge) badge.innerHTML = `<i class="fa-solid fa-user-friends"></i> Rakan (${data.sender})`;
                         log(`Peserta ${data.sender} menamatkan perkongsian skrin.`, 'info');
                     }
