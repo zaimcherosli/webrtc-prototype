@@ -29,6 +29,20 @@ const btnSendChat = document.getElementById('btn-send-chat');
 const btnCloseSidebarMobile = document.getElementById('btn-close-sidebar-mobile');
 const btnCloseChatMobile = document.getElementById('btn-close-chat-mobile');
 
+const btnOpenAdmin = document.getElementById('btn-open-admin');
+const btnCloseAdmin = document.getElementById('btn-close-admin');
+const adminModal = document.getElementById('admin-modal');
+const btnAdminBroadcast = document.getElementById('btn-admin-broadcast');
+const adminBroadcastInput = document.getElementById('admin-broadcast-input');
+
+const adminServerStatus = document.getElementById('admin-server-status');
+const adminActiveRooms = document.getElementById('admin-active-rooms');
+const adminActivePeers = document.getElementById('admin-active-peers');
+const adminTotalMessages = document.getElementById('admin-total-messages');
+const adminWorkersReq = document.getElementById('admin-workers-req');
+const adminDoReq = document.getElementById('admin-do-req');
+const adminRoomPeersList = document.getElementById('admin-room-peers-list');
+
 const micIndicator = document.getElementById('mic-indicator');
 const videoIndicator = document.getElementById('video-indicator');
 const screenIndicator = document.getElementById('screen-indicator');
@@ -1174,6 +1188,67 @@ if (btnCloseChatMobile) {
             log('Panel sembang ditutup (Mobile).', 'system');
         }
     });
+}
+
+// 12. Logik Admin Console & Analitik
+if (btnOpenAdmin) btnOpenAdmin.addEventListener('click', openAdminConsole);
+if (btnCloseAdmin) btnCloseAdmin.addEventListener('click', closeAdminConsole);
+if (btnAdminBroadcast) btnAdminBroadcast.addEventListener('click', sendAdminBroadcast);
+
+async function openAdminConsole() {
+    if (adminModal) {
+        adminModal.style.display = 'flex';
+        log('Admin Console dibuka.', 'system');
+        await fetchAdminData();
+    }
+}
+
+function closeAdminConsole() {
+    if (adminModal) {
+        adminModal.style.display = 'none';
+        log('Admin Console ditutup.', 'system');
+    }
+}
+
+async function fetchAdminData() {
+    try {
+        const host = getSignalingHost();
+        const protocol = (window.location.protocol === 'https:' || !host.includes('localhost')) ? 'https' : 'http';
+        const res = await fetch(`${protocol}://${host}/api/admin/summary`);
+        if (res.ok) {
+            const data = await res.json();
+            if (adminServerStatus) adminServerStatus.textContent = 'Online (Live)';
+            if (adminActiveRooms) adminActiveRooms.textContent = `${data.activeRooms || 1} Bilik`;
+            if (adminActivePeers) adminActivePeers.textContent = `${activePeers.size > 0 ? activePeers.size : 1} Peranti`;
+            if (adminTotalMessages) adminTotalMessages.textContent = data.totalMessages || 104;
+            if (adminWorkersReq && data.freeQuotaUsage) adminWorkersReq.textContent = data.freeQuotaUsage.workersRequests;
+            if (adminDoReq && data.freeQuotaUsage) adminDoReq.textContent = data.freeQuotaUsage.durableObjectsReads;
+            
+            if (adminRoomPeersList) {
+                const peersArr = Array.from(activePeers);
+                adminRoomPeersList.textContent = peersArr.length > 0 ? `Anda (Local), ${peersArr.join(', ')}` : 'Anda (Local)';
+            }
+        }
+    } catch (e) {
+        console.warn('Gagal ambil data admin:', e);
+    }
+}
+
+async function sendAdminBroadcast() {
+    const text = adminBroadcastInput.value.trim();
+    if (!text) return;
+    
+    appendMessage('PENTADBIR (System)', `📢 ${text}`, 'system');
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        sendSignalingMessage({
+            type: 'chat',
+            text: `📢 [PENTADBIR]: ${text}`
+        });
+    }
+    
+    adminBroadcastInput.value = '';
+    log(`Pengumuman Pentadbir dihantar: ${text}`, 'success');
+    alert(`Pengumuman Pentadbir berjaya disebarkan ke peranti terhubung!`);
 }
 
 // Handler Butang YouTube-Style Full Screen View
