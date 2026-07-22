@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            window.location.href = window.location.href.replace('http:', 'https:');
+        }
+    </script>
     <title>Antigravity Multi-Party WebRTC (Cloudflare Calls)</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css?v=35">
+    <link rel="stylesheet" href="style.css?v=36">
 </head>
 <body>
     <div class="app-container">
@@ -161,6 +166,6 @@
         </section>
     </div>
 
-    <script src="app.js?v=35"></script>
+    <script src="app.js?v=36"></script>
 </body>
 </html>

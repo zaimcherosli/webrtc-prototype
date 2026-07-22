@@ -760,6 +760,17 @@ function updateParticipantCount() {
 // Ia membolehkan pengguna menguji reka bentuk UI panggilan berkumpulan & chat secara simulasi tempatan
 let mockInterval = null;
 
+// STUN Server global untuk traversal rangkaian Mobile Data (Celcom, Digi, Maxis, U Mobile)
+const defaultIceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: 'stun:stun.services.mozilla.com' }
+];
+
 // 9. Mod WebRTC P2P Direct (Real Multi-Device Connection)
 function startP2PCall() {
     isP2PMode = true;
@@ -798,7 +809,7 @@ async function initiateP2POffer(targetPeerId) {
     log(`Memulakan sambungan WebRTC P2P terus ke ${targetPeerId}...`, 'info');
     
     const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        iceServers: defaultIceServers
     });
     
     p2pConnections.set(targetPeerId, pc);
@@ -857,7 +868,7 @@ async function handleP2POffer(sender, offer) {
     }
     
     pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        iceServers: defaultIceServers
     });
     p2pConnections.set(sender, pc);
     
