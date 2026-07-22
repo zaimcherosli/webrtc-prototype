@@ -1033,10 +1033,8 @@ video {
         overflow: hidden !important;
     }
 
-    /* Primary Remote Video / Screen Share takes 100% Fullscreen stage */
-    .video-wrapper:not(#local-video-wrapper),
-    .video-wrapper.remote-sharing-screen,
-    .video-wrapper.sharing-screen {
+    /* All video wrappers fill 100% stage in landscape by default */
+    .video-wrapper {
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
@@ -1054,8 +1052,13 @@ video {
         height: 100% !important;
     }
 
-    /* Local camera thumbnail (Anda) floats at top-right as PiP */
-    .video-wrapper#local-video-wrapper {
+    /* Primary Remote Video / Screen Share takes higher z-index stage when active */
+    .video-wrapper:not(#local-video-wrapper) {
+        z-index: 150 !important;
+    }
+
+    /* ONLY float local camera (#local-video-wrapper) as PIP when a remote peer / screen share exists in the call */
+    .video-grid.has-remote-peer #local-video-wrapper {
         position: fixed !important;
         top: 10px !important;
         right: 10px !important;

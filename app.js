@@ -587,6 +587,13 @@ function displayRemoteStream(stream, trackId, peerId) {
             console.warn("Autoplay audio/video blocked by browser, user interaction required:", e);
         });
     }
+    updateGridPeerClasses();
+}
+
+// Kemas kini kelas pemetaan rakan di video grid
+function updateGridPeerClasses() {
+    const hasRemote = videoContainer.querySelectorAll('.video-wrapper:not(#local-video-wrapper)').length > 0;
+    videoContainer.classList.toggle('has-remote-peer', hasRemote);
 }
 
 // Padam video peserta tertentu
@@ -596,6 +603,7 @@ function removeVideoTrackElement(trackId, peerId) {
         wrapper.remove();
         log(`Paparan video ${peerId} dipadam.`, 'info');
     }
+    updateGridPeerClasses();
 }
 
 // 7. Tamatkan Siaran / Sesi (Unpublish & Clean)
