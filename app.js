@@ -15,6 +15,7 @@ const controlsPanel = document.querySelector('.controls-panel');
 
 const inputDisplayName = document.getElementById('input-display-name');
 const inputRoomId = document.getElementById('input-room-id');
+const inputSignalHost = document.getElementById('input-signal-host');
 const btnJoinRoom = document.getElementById('btn-join-room');
 const peerIdDisplay = document.getElementById('peer-id-display');
 
@@ -71,14 +72,15 @@ function log(message, type = 'system') {
 
 // Helper pengesanan hos pelayan isyarat (Signaling Server)
 function getSignalingHost() {
+    // Jika pengguna memasukkan URL pelayan isyarat tersuai di kotak tetapan
+    if (inputSignalHost && inputSignalHost.value.trim()) {
+        return inputSignalHost.value.trim().replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
+    }
     const hostname = window.location.hostname;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
         return `${hostname}:8787`;
     }
-    // Jika frontend dinaikkan di bawah domain webrtc-prototype, hubungkan ke worker backend webrtc-signaling
-    if (hostname.startsWith('webrtc-prototype.')) {
-        return hostname.replace('webrtc-prototype.', 'webrtc-signaling.');
-    }
+    // Secara lalai, gunakan domain pelayan semasa (same-origin)
     return hostname;
 }
 
@@ -154,22 +156,23 @@ function joinRoom() {
     }
 
     currentRoomId = roomId;
-    log(`Menyambung ke bilik: ${roomId}...`, 'info');
     
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsHost = getSignalingHost();
     const wsUrl = `${protocol}//${wsHost}/room/${roomId}?peerId=${myPeerId}`;
+    log(`Menyambung WebSocket ke: ${wsUrl}...`, 'info');
     
     try {
         socket = new WebSocket(wsUrl);
         
         socket.onopen = () => {
-            log('Berjaya disambung ke Cloudflare Workers Signaling Server.', 'success');
+            log('Berjaya disambung ke pelayan isyarat WebSocket.', 'success');
             wsStatus.className = 'status-badge connected';
             wsStatus.innerHTML = '<i class="fa-solid fa-circle-nodes"></i> WS: Aktif';
             
             inputDisplayName.disabled = true;
             inputRoomId.disabled = true;
+            if (inputSignalHost) inputSignalHost.disabled = true;
             btnJoinRoom.disabled = true;
             
             log('Menghantar isyarat join ke server...', 'system');
@@ -200,8 +203,8 @@ function joinRoom() {
             resetRoomUI();
         };
         
-        socket.onerror = () => {
-            log(`Ralat WebSocket. Sila pastikan Cloudflare Worker sedang berjalan di port 8787.`, 'error');
+        socket.onerror = (err) => {
+            log(`Gagal menyambung WebSocket ke ${wsUrl}. Pastikan pelayan worker isyarat sedang aktif.`, 'error');
         };
         
     } catch (e) {
@@ -212,6 +215,7 @@ function joinRoom() {
 function resetRoomUI() {
     inputDisplayName.disabled = false;
     inputRoomId.disabled = false;
+    if (inputSignalHost) inputSignalHost.disabled = false;
     btnJoinRoom.disabled = false;
     btnConnect.disabled = true;
     

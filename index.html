@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css?v=26">
+    <link rel="stylesheet" href="style.css?v=27">
 </head>
 <body>
     <div class="app-container">
@@ -37,6 +37,10 @@
                     <div class="input-field-wrapper">
                         <label for="input-room-id">Room ID</label>
                         <input type="text" id="input-room-id" placeholder="e.g. bilik-sfu">
+                    </div>
+                    <div class="input-field-wrapper">
+                        <label for="input-signal-host">Signaling Host (Optional)</label>
+                        <input type="text" id="input-signal-host" placeholder="Default (Automatic)">
                     </div>
                 </div>
                 <button id="btn-join-room" class="btn btn-primary" disabled>
@@ -156,6 +160,6 @@
         </section>
     </div>
 
-    <script src="app.js?v=26"></script>
+    <script src="app.js?v=27"></script>
 </body>
 </html>
