@@ -80,7 +80,10 @@ function getSignalingHost() {
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
         return `${hostname}:8787`;
     }
-    // Secara lalai, gunakan domain pelayan semasa (same-origin)
+    // Secara lalai, hubungkan frontend ke backend live worker webrtc-signaling yang baharu di-deploy
+    if (hostname.startsWith('webrtc-prototype.')) {
+        return hostname.replace('webrtc-prototype.', 'webrtc-signaling.');
+    }
     return hostname;
 }
 
