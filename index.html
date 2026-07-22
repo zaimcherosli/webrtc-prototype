@@ -129,9 +129,6 @@
                 <button id="btn-toggle-chat" class="btn btn-secondary active" title="Tutup/Buka Sembang">
                     <i class="fa-solid fa-comments"></i>
                 </button>
-                <button id="btn-open-admin" class="btn btn-secondary" title="Admin Console & Analitik">
-                    <i class="fa-solid fa-chart-line"></i>
-                </button>
                 <button id="btn-connect" class="btn btn-success" disabled title="Mula Bersiaran (Publish)">
                     <i class="fa-solid fa-tower-broadcast"></i>
                 </button>
@@ -144,102 +141,6 @@
                 <i class="fa-solid fa-eye"></i>
             </button>
         </main>
-
-        <!-- Admin Console & Analytics Modal Overlay -->
-        <div id="admin-modal" class="admin-modal-overlay" style="display: none;">
-            <div class="admin-modal-container">
-                <div class="admin-header">
-                    <div class="admin-title">
-                        <i class="fa-solid fa-chart-pie"></i>
-                        <h2>WebRTC Admin Console & Analitik</h2>
-                    </div>
-                    <button id="btn-close-admin" class="btn btn-secondary btn-icon-small" title="Tutup"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-
-                <div class="admin-body">
-                    <!-- Summary Metrics Grid -->
-                    <div class="admin-metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-icon blue"><i class="fa-solid fa-signal"></i></div>
-                            <div class="metric-info">
-                                <span class="metric-label">Status Pelayan</span>
-                                <span class="metric-value text-success" id="admin-server-status">Online</span>
-                            </div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-icon green"><i class="fa-solid fa-door-open"></i></div>
-                            <div class="metric-info">
-                                <span class="metric-label">Bilik Aktif</span>
-                                <span class="metric-value" id="admin-active-rooms">1 Bilik</span>
-                            </div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-icon purple"><i class="fa-solid fa-users"></i></div>
-                            <div class="metric-info">
-                                <span class="metric-label">Peserta Terhubung</span>
-                                <span class="metric-value" id="admin-active-peers">2 Peranti</span>
-                            </div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-icon orange"><i class="fa-solid fa-comments"></i></div>
-                            <div class="metric-info">
-                                <span class="metric-label">Jumlah Mesej Chat</span>
-                                <span class="metric-value" id="admin-total-messages">104</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Cloudflare Usage Quota Progress Section -->
-                    <div class="admin-section card">
-                        <h3><i class="fa-solid fa-cloud"></i> Ringkasan Penggunaan Cloudflare (Free Quota)</h3>
-                        <div class="quota-grid">
-                            <div class="quota-item">
-                                <div class="quota-label"><span>Workers Requests (Hari Ini)</span> <strong id="admin-workers-req">1,240 / 100,000</strong></div>
-                                <div class="quota-bar"><div class="quota-progress" style="width: 1.2%;"></div></div>
-                            </div>
-                            <div class="quota-item">
-                                <div class="quota-label"><span>Durable Objects Reads (Bulan Ini)</span> <strong id="admin-do-req">3,850 / 1,000,000</strong></div>
-                                <div class="quota-bar"><div class="quota-progress purple" style="width: 0.4%;"></div></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Broadcast Announcement Action -->
-                    <div class="admin-section card">
-                        <h3><i class="fa-solid fa-bullhorn"></i> Hantar Pengumuman Admin (Broadcast)</h3>
-                        <div class="admin-broadcast-form">
-                            <input type="text" id="admin-broadcast-input" placeholder="Tulis pengumuman rasmi ke semua bilik...">
-                            <button id="btn-admin-broadcast" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Hantar</button>
-                        </div>
-                    </div>
-
-                    <!-- Live Logs / Active Sessions Table -->
-                    <div class="admin-section card">
-                        <h3><i class="fa-solid fa-list-check"></i> Senarai Bilik & Peserta Aktif</h3>
-                        <div id="admin-room-list" class="admin-table-container">
-                            <table class="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>ID Bilik</th>
-                                        <th>Peserta</th>
-                                        <th>Screen Share</th>
-                                        <th>Status Websocket</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><span class="badge-blue">Bilik 1</span></td>
-                                        <td id="admin-room-peers-list">Anda (Local), Remote Peer</td>
-                                        <td><span class="badge-green">Aktif</span></td>
-                                        <td><span class="badge-success">Bersambung</span></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Right Sidebar: Chat -->
         <section class="chat-section">

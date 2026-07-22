@@ -226,6 +226,11 @@ export default {
       return doStub.fetch(request);
     }
 
+    if (path === "/admin" || path === "/admin/") {
+      const adminReq = new Request(new URL("/admin.html", request.url), request);
+      return env.ASSETS.fetch(adminReq);
+    }
+
     if (env.ASSETS) {
       return env.ASSETS.fetch(request);
     }

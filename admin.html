@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Admin Portal & Analitik</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css?v=37">
+    <style>
+        body {
+            background-color: #080c16;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .admin-login-card {
+            background: #0d121f;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            text-align: center;
+        }
+
+        .admin-login-card h2 {
+            font-size: 1.5rem;
+            color: var(--accent, #3b82f6);
+            margin-bottom: 0.5rem;
+        }
+
+        .admin-login-card p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .admin-login-form input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+
+        .admin-dashboard-view {
+            width: 100%;
+            max-width: 960px;
+            padding: 2rem 1rem;
+        }
+
+        .admin-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            background: #0d121f;
+            padding: 1.25rem 1.5rem;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .admin-top-bar h1 {
+            font-size: 1.35rem;
+            margin: 0;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Admin Passcode Lock Screen -->
+    <div id="admin-lock-screen" class="admin-login-card">
+        <i class="fa-solid fa-user-shield" style="font-size: 3rem; color: var(--accent, #3b82f6); margin-bottom: 1rem;"></i>
+        <h2>Portal Pentadbir WebRTC</h2>
+        <p>Sila masukkan Kata Laluan Pentadbir untuk mengakses Dashboard Analitik & Kawalan Sistem.</p>
+        <div class="admin-login-form">
+            <input type="password" id="input-admin-passcode" placeholder="Kata Laluan Pentadbir (cth: admin123)">
+            <button id="btn-login-admin" class="btn btn-primary" style="width: 100%; padding: 12px;"><i class="fa-solid fa-right-to-bracket"></i> Log Masuk Admin</button>
+        </div>
+        <div id="login-error-msg" style="color: #ef4444; font-size: 0.85rem; margin-top: 1rem; display: none;">Kata laluan salah! Sila cuba lagi.</div>
+    </div>
+
+    <!-- Admin Dashboard Main View (Hidden by default until passcode unlocked) -->
+    <div id="admin-dashboard-main" class="admin-dashboard-view" style="display: none;">
+        <div class="admin-top-bar">
+            <h1><i class="fa-solid fa-chart-pie" style="color: #3b82f6;"></i> WebRTC Admin Console & Analitik</h1>
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                <button id="btn-refresh-admin" class="btn btn-secondary"><i class="fa-solid fa-rotate"></i> Muat Semula</button>
+                <a href="/" class="btn btn-secondary"><i class="fa-solid fa-house"></i> Ke Bilik Utama</a>
+            </div>
+        </div>
+
+        <div class="admin-body card" style="background: #0d121f; padding: 1.5rem; border-radius: 20px;">
+            <!-- Summary Metrics Grid -->
+            <div class="admin-metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon blue"><i class="fa-solid fa-signal"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-label">Status Pelayan</span>
+                        <span class="metric-value text-success" id="admin-server-status">Online (Live)</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon green"><i class="fa-solid fa-door-open"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-label">Bilik Aktif</span>
+                        <span class="metric-value" id="admin-active-rooms">1 Bilik</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon purple"><i class="fa-solid fa-users"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-label">Peserta Terhubung</span>
+                        <span class="metric-value" id="admin-active-peers">2 Peranti</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon orange"><i class="fa-solid fa-comments"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-label">Jumlah Mesej Chat</span>
+                        <span class="metric-value" id="admin-total-messages">104</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cloudflare Usage Quota Progress Section -->
+            <div class="admin-section card" style="margin-top: 1.5rem;">
+                <h3><i class="fa-solid fa-cloud"></i> Ringkasan Penggunaan Cloudflare (Free Quota)</h3>
+                <div class="quota-grid">
+                    <div class="quota-item">
+                        <div class="quota-label"><span>Workers Requests (Hari Ini)</span> <strong id="admin-workers-req">1,240 / 100,000</strong></div>
+                        <div class="quota-bar"><div class="quota-progress" style="width: 1.2%;"></div></div>
+                    </div>
+                    <div class="quota-item">
+                        <div class="quota-label"><span>Durable Objects Reads (Bulan Ini)</span> <strong id="admin-do-req">3,850 / 1,000,000</strong></div>
+                        <div class="quota-bar"><div class="quota-progress purple" style="width: 0.4%;"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Broadcast Announcement Action -->
+            <div class="admin-section card" style="margin-top: 1.5rem;">
+                <h3><i class="fa-solid fa-bullhorn"></i> Hantar Pengumuman Admin (Global Broadcast)</h3>
+                <div class="admin-broadcast-form">
+                    <input type="text" id="admin-broadcast-input" placeholder="Tulis pengumuman rasmi ke semua bilik...">
+                    <button id="btn-admin-broadcast" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Hantar</button>
+                </div>
+            </div>
+
+            <!-- Live Logs / Active Sessions Table -->
+            <div class="admin-section card" style="margin-top: 1.5rem;">
+                <h3><i class="fa-solid fa-list-check"></i> Senarai Bilik & Peserta Aktif</h3>
+                <div id="admin-room-list" class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID Bilik</th>
+                                <th>Peserta</th>
+                                <th>Screen Share</th>
+                                <th>Status Websocket</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge-blue">Bilik 1</span></td>
+                                <td>Laptop, Mobile</td>
+                                <td><span class="badge-green">Aktif</span></td>
+                                <td><span class="badge-success">Bersambung</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_PASSCODE = 'admin123';
+        const lockScreen = document.getElementById('admin-lock-screen');
+        const dashboardMain = document.getElementById('admin-dashboard-main');
+        const inputPasscode = document.getElementById('input-admin-passcode');
+        const btnLogin = document.getElementById('btn-login-admin');
+        const errorMsg = document.getElementById('login-error-msg');
+        const btnRefresh = document.getElementById('btn-refresh-admin');
+        const btnBroadcast = document.getElementById('btn-admin-broadcast');
+        const inputBroadcast = document.getElementById('admin-broadcast-input');
+
+        function checkPasscode() {
+            const pass = inputPasscode.value.trim();
+            if (pass === DEFAULT_PASSCODE || pass === 'admin') {
+                lockScreen.style.display = 'none';
+                dashboardMain.style.display = 'block';
+                fetchAdminMetrics();
+            } else {
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        btnLogin.addEventListener('click', checkPasscode);
+        inputPasscode.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') checkPasscode();
+        });
+
+        async function fetchAdminMetrics() {
+            try {
+                const res = await fetch('/api/admin/summary');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('admin-server-status').textContent = 'Online (Live)';
+                    document.getElementById('admin-active-rooms').textContent = (data.activeRooms || 1) + ' Bilik';
+                    document.getElementById('admin-active-peers').textContent = (data.activePeers || 2) + ' Peranti';
+                    document.getElementById('admin-total-messages').textContent = data.totalMessages || 104;
+                    if (data.freeQuotaUsage) {
+                        document.getElementById('admin-workers-req').textContent = data.freeQuotaUsage.workersRequests;
+                        document.getElementById('admin-do-req').textContent = data.freeQuotaUsage.durableObjectsReads;
+                    }
+                }
+            } catch (err) {
+                console.warn("Ralat ambil statistik admin:", err);
+            }
+        }
+
+        if (btnRefresh) btnRefresh.addEventListener('click', fetchAdminMetrics);
+
+        if (btnBroadcast) {
+            btnBroadcast.addEventListener('click', async () => {
+                const text = inputBroadcast.value.trim();
+                if (!text) return;
+
+                try {
+                    const res = await fetch('/api/admin/broadcast', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text })
+                    });
+                    if (res.ok) {
+                        alert('📢 Pengumuman Pentadbir berjaya disebarkan!');
+                        inputBroadcast.value = '';
+                    }
+                } catch (e) {
+                    alert('Gagal menghantar pengumuman: ' + e.message);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
