@@ -769,6 +769,57 @@ video {
     }
 }
 
+/* Full Screen Theater View (YouTube Style) */
+.btn-expand-video {
+    cursor: pointer;
+    background-color: rgba(15, 23, 42, 0.85) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.btn-expand-video:hover {
+    background-color: var(--accent) !important;
+    color: #fff !important;
+}
+
+.video-wrapper.fullscreen-video-mode,
+.fullscreen-video-mode {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    background-color: #000 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    max-height: none !important;
+    max-width: none !important;
+}
+
+.video-wrapper.fullscreen-video-mode video,
+.fullscreen-video-mode video {
+    object-fit: contain !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Screen Sharing Theater Layout */
+.video-wrapper.sharing-screen,
+.video-wrapper.remote-sharing-screen {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: 100%;
+    max-height: 75vh;
+    border: 2px solid var(--accent);
+}
+
+.video-wrapper.sharing-screen video,
+.video-wrapper.remote-sharing-screen video {
+    object-fit: contain !important;
+    background-color: #000;
+}
+
 /* Mobile and Tablet Responsive Media Queries */
 .mobile-only-btn {
     display: none !important;
@@ -804,6 +855,7 @@ video {
         overflow-y: auto;
     }
     
+    /* Mobile Chat Section Flexbox Layout Fix (Ensures typing area is ALWAYS 100% visible) */
     .chat-section {
         position: fixed;
         top: 0;
@@ -811,9 +863,31 @@ video {
         width: 100vw;
         height: 100dvh;
         height: 100vh;
-        z-index: 300;
+        z-index: 350;
         background-color: #0d121f;
         border-left: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .chat-header {
+        flex: 0 0 auto;
+    }
+
+    .chat-messages {
+        flex: 1 1 0;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+
+    .chat-input-area {
+        flex: 0 0 auto;
+        padding: 0.75rem 1rem;
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+        margin-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+        background-color: #0b0f19;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
     
     .main-content {
@@ -931,6 +1005,67 @@ video {
         top: 110px !important;
         right: 10px !important;
         left: 10px !important;
+    }
+}
+
+/* Mobile Landscape Rotation (YouTube-style Full Screen View) */
+@media (orientation: landscape) and (max-width: 950px) {
+    .app-container {
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    .main-header {
+        display: none !important; /* Hide header in landscape to maximize video stage */
+    }
+
+    .main-content {
+        padding: 0.25rem !important;
+    }
+
+    .video-grid {
+        padding-bottom: 50px !important;
+        gap: 0.25rem !important;
+    }
+
+    /* Shared screen takes 100% full screen in landscape mode like YouTube */
+    .video-wrapper.sharing-screen,
+    .video-wrapper.remote-sharing-screen {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        z-index: 400 !important;
+        background: #000 !important;
+        border-radius: 0 !important;
+        border: none !important;
+    }
+
+    .video-wrapper.sharing-screen video,
+    .video-wrapper.remote-sharing-screen video {
+        object-fit: contain !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    /* Floating PIP webcam thumbnail for local/remote peer in landscape mode */
+    .video-wrapper:not(.sharing-screen):not(.remote-sharing-screen) {
+        position: fixed !important;
+        top: 10px !important;
+        right: 10px !important;
+        width: 110px !important;
+        height: 70px !important;
+        z-index: 450 !important;
+        border: 2px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7) !important;
+    }
+
+    .controls-panel {
+        bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+        padding: 4px 10px !important;
+        background: rgba(15, 23, 42, 0.8) !important;
     }
 }
 

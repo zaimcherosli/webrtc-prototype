@@ -568,8 +568,13 @@ function displayRemoteStream(stream, trackId, peerId) {
         label.className = 'video-label';
         label.innerHTML = `<span class="label-badge"><i class="fa-solid fa-user-friends"></i> Rakan (${peerId})</span>`;
         
+        const streamIndicators = document.createElement('div');
+        streamIndicators.className = 'stream-indicators';
+        streamIndicators.innerHTML = `<button class="indicator btn-expand-video" title="Full Screen (YouTube View)"><i class="fa-solid fa-expand"></i></button>`;
+
         wrapper.appendChild(video);
         wrapper.appendChild(label);
+        wrapper.appendChild(streamIndicators);
         videoContainer.appendChild(wrapper);
     }
     
@@ -1147,6 +1152,20 @@ if (btnCloseChatMobile) {
         }
     });
 }
+
+// Handler Butang YouTube-Style Full Screen View
+videoContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-expand-video');
+    if (btn) {
+        const wrapper = btn.closest('.video-wrapper');
+        if (wrapper) {
+            const isFullscreen = wrapper.classList.toggle('fullscreen-video-mode');
+            btn.innerHTML = isFullscreen ? '<i class="fa-solid fa-compress"></i>' : '<i class="fa-solid fa-expand"></i>';
+            btn.title = isFullscreen ? 'Keluar Full Screen' : 'Full Screen (YouTube View)';
+            log(isFullscreen ? 'Mod Full Screen (YouTube View) diaktifkan.' : 'Keluar dari mod Full Screen.', 'info');
+        }
+    }
+});
 
 btnJoinRoom.addEventListener('click', joinRoom);
 inputDisplayName.addEventListener('input', () => {
